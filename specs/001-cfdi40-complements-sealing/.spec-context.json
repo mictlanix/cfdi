@@ -1,0 +1,52 @@
+{
+  "workflow": "speckit",
+  "specName": "CFDI 4.0 Standard, Current Complements and Document Sealing",
+  "branch": "001-cfdi40-complements-sealing",
+  "currentStep": "tasks",
+  "status": "ready-to-implement",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T03:47:44.846Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T03:49:41.902Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T03:54:46.996Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T04:09:52.062Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T04:46:10.476Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T04:49:22.948Z"
+    }
+  ],
+  "telemetryInstanceId": "0d541629-7d34-402b-81c3-841de0e92a71"
+}
