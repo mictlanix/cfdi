@@ -1,7 +1,7 @@
 # Data Model: Facturación México (Multifacturas) PAC Client
 
 Decisions are in [research.md](research.md). The interface values (`Stamp`, `CancellationRequest`,
-`SatStatus` and the enums) are spec 002's.
+`CancellationAnswer`) are spec 002's.
 
 ## 1. Settings
 
@@ -11,13 +11,12 @@ Decisions are in [research.md](research.md). The interface values (`Stamp`, `Can
 | `password` | `str` | required | The PAC password (`clave`/`pass`); never printed |
 | `production` | `bool` | required | `True` sends `produccion='SI'`, `False` sends `'NO'` (test mode) |
 | `base_url` | `str` | `'https://ws.multifacturas.com'` | MUST start with `https://`; paths `/pac/index.php` and `/cancelacion2022/index.php` are appended |
-| `sat_url` | `str` | `'https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc'` | MUST start with `https://` |
 | `connect_timeout` | `float` | `10.0` | Seconds; > 0 |
 | `read_timeout` | `float` | `60.0` | Seconds; > 0 |
 
 `MultifacturasSettings` is a frozen, keyword-only dataclass. Its `__post_init__` raises
-`ValueError` naming the field for a URL that is not `https://` or a timeout ≤ 0. Its `repr` is
-`MultifacturasSettings(user='…', password=<hidden>, production=…, base_url='…', sat_url='…',
+`ValueError` naming the field for a `base_url` that is not `https://` or a timeout ≤ 0. Its `repr`
+is `MultifacturasSettings(user='…', password=<hidden>, production=…, base_url='…',
 connect_timeout=…, read_timeout=…)`.
 
 ## 2. Transport outcomes (all operations, R2)
@@ -80,33 +79,18 @@ Request struct `datos`:
 | `codigo_mf_numero` | `codigo_respuesta_sat` | Result |
 |--------------------|------------------------|--------|
 | ≠ `0` | — | `PacRejected` per section 3 |
-| `0` | `201` (request received) | `query_status(issuer, recipient, uuid, total)`, read as in the next table |
-| `0` | `202` (previously requested) | the same status query: `Cancelado` → `accepted`, otherwise `pending` |
-| `0` | any other | `PacRejected(<SAT code>, codigo_respuesta_sat_texto)` |
+| `0` | `201` (request received) | `PENDING` |
+| `0` | `202` (previously requested) | `ACCEPTED` |
+| `0` | any other | `PacRejected(<SAT code>, codigo_respuesta_sat_texto)` (`SAT-ANSWER` when there is no code) |
 
-After a `201`, the status decides the answer:
+The client never answers `NOT_CANCELLABLE`; whether a pending cancellation is accepted, rejected
+or expires, or the document is not cancellable, is the SAT's status (mictlanix/cfdi#6).
 
-| Status | Answer |
-|--------|--------|
-| state `cancelled` | `ACCEPTED` |
-| cancellation `pending` | `PENDING` |
-| cancellability `not_cancellable` | `NOT_CANCELLABLE` |
-| anything else, or the status query raises `PacError` | `PENDING` |
+## 6. SAT status answers (removed 2026-11-18)
 
-## 6. SAT status answers (`Consulta`, R7)
-
-The query sends the expression `?re={issuer}&rr={recipient}&tt={_qr_total(total)}&id={uuid}`,
-XML-escaped. A UUID that is not well formed returns `not_found / not_cancellable / none` without a
-call.
-
-| SAT field | Value | Maps to |
-|-----------|-------|---------|
-| `CodigoEstatus` starting `N` or `Estado` `No Encontrado` | — | `NOT_FOUND / NOT_CANCELLABLE / NONE` |
-| `Estado` | `Vigente` / `Cancelado` | `VALID` / `CANCELLED` |
-| `EsCancelable` | `Cancelable sin aceptación` / `Cancelable con aceptación` / `No cancelable` | `WITHOUT_ACCEPTANCE` / `WITH_ACCEPTANCE` / `NOT_CANCELLABLE` |
-| `EstatusCancelacion` | empty / `En proceso` / `Plazo vencido` / `Cancelado con aceptación` / `Cancelado sin aceptación` / `Solicitud rechazada` | `NONE` / `PENDING` / `EXPIRED` / `ACCEPTED` / `ACCEPTED` / `REJECTED` |
-
-Any other value is `PacRejected('SAT-ANSWER', 'unexpected SAT status')`.
+The SAT's status query (`Consulta`) does not depend on the PAC and is no longer part of this
+client or of the PAC interface; mictlanix/cfdi#6 tracks a PAC-independent client and carries the
+mapping this section held.
 
 ## 7. Balance (`saldo`, R8)
 
@@ -124,10 +108,10 @@ Any other value is `PacRejected('SAT-ANSWER', 'unexpected SAT status')`.
 | `10` + `CACFDI33` | PAC (cancellation) | Fields problem, e.g. the certificate does not belong to the key | `PacRejected('CACFDI33', …)` |
 | `CSF101` | PAC (cancellation, documented) | Cannot be cancelled | `PacRejected('CSF101', …)` |
 | `40150` | PAC (cancellation, documented) | Invalid cancellation reason | `PacRejected('40150', …)` |
-| `201` | SAT cancellation | Request received | status query decides |
-| `202` | SAT cancellation | Previously requested | status query decides |
+| `201` | SAT cancellation | Request received | `PENDING` |
+| `202` | SAT cancellation | Previously requested | `ACCEPTED` |
 | `203` | SAT cancellation | Issuer does not match | `PacRejected('203', …)` |
 | `205` | SAT cancellation | UUID does not exist (observed in test mode) | `PacRejected('205', …)` |
 | `MF-ANSWER` | library | Success answer without a usable stamp or balance | `PacRejected` |
-| `SAT-ANSWER` | library | Unexpected SAT status value | `PacRejected` |
+| `SAT-ANSWER` | library | A cancellation answer without a SAT code | `PacRejected` |
 | `SOAP-FAULT` | library | The service answered a SOAP Fault | `PacRejected` |

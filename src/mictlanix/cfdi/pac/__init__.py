@@ -6,16 +6,13 @@ it offline.
 
 from mictlanix.cfdi.pac._errors import PacError, PacRejected, PacTimeout, PacUnavailable
 from mictlanix.cfdi.pac._interface import (
-    Cancellability,
     CancellationAnswer,
     CancellationRequest,
-    CancellationStatus,
     CsdCredentials,
     PacClient,
-    SatState,
-    SatStatus,
     Stamp,
 )
+from mictlanix.cfdi.pac.multifacturas import MultifacturasPac, MultifacturasSettings
 from mictlanix.cfdi.pac.simulated import (
     SIMULATED_PAC_RFC,
     CancellationOutcome,
@@ -31,11 +28,7 @@ __all__ = [
     'Stamp',
     'CsdCredentials',
     'CancellationRequest',
-    'SatStatus',
     'CancellationAnswer',
-    'SatState',
-    'Cancellability',
-    'CancellationStatus',
     'PacError',
     'PacRejected',
     'PacUnavailable',
@@ -47,4 +40,6 @@ __all__ = [
     'CancellationOutcome',
     'ReceiverAnswer',
     'SIMULATED_PAC_RFC',
+    'MultifacturasPac',
+    'MultifacturasSettings',
 ]

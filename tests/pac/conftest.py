@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -28,6 +30,54 @@ CFDI = '{http://www.sat.gob.mx/cfd/4}'
 _folios = itertools.count(1)
 
 MakeSealed = Callable[..., bytes]
+MULTIFACTURAS = Path(__file__).resolve().parent.parent / 'fixtures' / 'multifacturas'
+
+
+@dataclass
+class Sent:
+    """One request a client sent through the replayed transport."""
+
+    url: str
+    action: str
+    params: dict[str, str]
+
+
+class Replay:
+    """Answers each ``_soap._post`` from a queue of fixture files, raw answers or exceptions."""
+
+    def __init__(self) -> None:
+        self.answers: list[str | bytes | BaseException] = []
+        self.sent: list[Sent] = []
+
+    def __call__(self, *answers: str | bytes | BaseException) -> list[Sent]:
+        self.answers.extend(answers)
+        return self.sent
+
+    def post(self, url: str, action: str, body: bytes, settings: Any) -> bytes:
+        envelope = etree.fromstring(body)
+        child = envelope.find('{http://schemas.xmlsoap.org/soap/envelope/}Body')[0]  # type: ignore[index]
+        params = {
+            etree.QName(node).localname: node.text or ''
+            for node in child.iter()
+            if isinstance(node.tag, str) and len(node) == 0
+        }
+        self.sent.append(Sent(url, action.removeprefix('urn:wservicewsdl#'), params))
+        assert self.answers, f'no answer queued for {action}'
+        answer = self.answers.pop(0)
+        if isinstance(answer, BaseException):
+            raise answer
+        if isinstance(answer, bytes):
+            return answer
+        return (MULTIFACTURAS / answer).read_bytes()
+
+
+@pytest.fixture
+def replay(monkeypatch: pytest.MonkeyPatch) -> Replay:
+    from mictlanix.cfdi.pac import _soap
+
+    fake = Replay()
+    monkeypatch.setattr(_soap, '_post', fake.post)
+    return fake
 
 
 @pytest.fixture

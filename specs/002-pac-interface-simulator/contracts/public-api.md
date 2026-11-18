@@ -4,13 +4,16 @@ Everything below is exported from `mictlanix.cfdi.pac` and nothing else is. `mic
 exports do not change. Types are in [../data-model.md](../data-model.md); decisions in
 [../research.md](../research.md).
 
+> **Amended by feature 003 (mictlanix/cfdi#3):** `query_status` and its values (`SatStatus`,
+> `SatState`, `Cancellability`, `CancellationStatus`) left the interface. The SAT's status
+> service does not depend on the PAC; a PAC-independent client for it is tracked in #6.
+
 ## Exports
 
 ```python
 # Interface
 PacClient,
-Stamp, CsdCredentials, CancellationRequest, SatStatus,
-CancellationAnswer, SatState, Cancellability, CancellationStatus,
+Stamp, CsdCredentials, CancellationRequest, CancellationAnswer,
 # Errors
 PacError, PacRejected, PacUnavailable, PacTimeout,
 # Simulated PAC
@@ -26,9 +29,6 @@ class PacClient(Protocol):
     async def stamp(self, sealed_xml: bytes) -> Stamp
     async def find_stamp(self, sealed_xml: bytes) -> Stamp | None
     async def request_cancellation(self, request: CancellationRequest) -> CancellationAnswer
-    async def query_status(
-        self, issuer_rfc: str, recipient_rfc: str, uuid: str, total: Decimal
-    ) -> SatStatus
 ```
 
 - Every operation either returns its result or raises a `PacError` subclass; nothing else
@@ -38,7 +38,7 @@ class PacClient(Protocol):
   Multifacturas allows it.
 - `find_stamp`: never stamps; `None` when the PAC has no stamp for that sealed document.
 - `request_cancellation`: `PacTimeout` means the request may have reached the SAT; resolve it
-  with `query_status`.
+  by requesting the cancellation again, which the SAT answers for a UUID it already has.
 - No error, `repr` or log contains credentials, CSD material, a document's XML or a raw PAC
   payload.
 
@@ -65,12 +65,6 @@ class CancellationRequest:
     reason: str                      # '01', '02', '03' or '04'
     substitute_uuid: str | None = None
     csd: CsdCredentials
-
-@dataclass(frozen=True, kw_only=True)
-class SatStatus:
-    state: SatState
-    cancellability: Cancellability
-    cancellation: CancellationStatus
 ```
 
 `CancellationRequest(...)` raises `mictlanix.cfdi.ValidationError` with every violation at once
@@ -131,8 +125,8 @@ class SimulatedPac:  # implements PacClient
   one new document through two instances can both stamp it. Share the instance within a process.
 - `clock`: returns naive Mexico City time; defaults to the current time at UTC-6.
 - A configured stamp outcome is used by the next `stamp` of that document only, and a configured
-  cancellation outcome by the next `request_cancellation` of that UUID only; `find_stamp` and
-  `query_status` neither use nor honour them. `code` and `message` apply to `REJECTED` (ignored
+  cancellation outcome by the next `request_cancellation` of that UUID only; `find_stamp`
+  neither uses nor honours them. `code` and `message` apply to `REJECTED` (ignored
   otherwise), each defaulting on its own to `CFDI40999` and `Rechazo simulado`.
 - `configure_cancellation` accepts any UUID string and compares it upper-cased; one that is not
   a well-formed UUID simply never matches a request.

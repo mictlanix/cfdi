@@ -53,35 +53,33 @@ PAC's test mode.
 
 ---
 
-### User Story 2 - Cancel through Multifacturas and follow the SAT status (Priority: P2)
+### User Story 2 - Cancel through Multifacturas (Priority: P2)
 
 A caller requests the cancellation of a stamped document with the issuer and recipient RFCs, the
 UUID, the total, the SAT reason, the substitute UUID when the reason requires it, and the issuer's
-CSD. The client sends the PAC only what it needs from the CSD and answers accepted, pending or not
-cancellable. The caller queries the document's SAT status (state, cancellability, cancellation
-status) the same way as with the simulated PAC.
+CSD. The client sends the PAC only what it needs from the CSD and answers accepted or pending
+from the SAT's code. Following the cancellation afterwards (accepted, rejected or expired by the
+recipient, or not cancellable) is the SAT's status service, which does not depend on the PAC and is
+not part of this client (amended 2026-11-18; tracked in mictlanix/cfdi#6).
 
 **Why this priority**: cancelling is the second operation every issuer needs; it builds on
 stamped documents from P1.
 
-**Independent Test**: offline, replay recorded cancellation answers (accepted, pending, not
-cancellable, a refusal) and SAT status answers, and check the mapped answer and status; opt-in,
-cancel a document stamped in the PAC's test mode and query its status.
+**Independent Test**: offline, replay recorded cancellation answers (received, already
+cancelled, a refusal) and check the mapped answer; opt-in, cancel a document stamped in the PAC's
+test mode.
 
 **Acceptance Scenarios**:
 
-1. **Given** a stamped document that can be cancelled without acceptance, **When** the caller
-   requests its cancellation, **Then** the answer is accepted.
-2. **Given** a document that needs the recipient's acceptance, **When** the caller requests its
-   cancellation, **Then** the answer is pending.
-3. **Given** a document the SAT will not cancel (for example, it has related documents), **When**
-   the caller requests its cancellation, **Then** the answer is not cancellable.
+1. **Given** the SAT received the request (201), **When** the caller requests the cancellation,
+   **Then** the answer is pending.
+2. **Given** the SAT had already cancelled the document (202), **When** the caller requests its
+   cancellation, **Then** the answer is accepted.
+3. **Given** the SAT refuses the request with its own code (for example 205, UUID unknown),
+   **When** the caller requests it, **Then** a PAC-rejected error carries the SAT's code and text.
 4. **Given** the PAC refuses the request (wrong CSD password, CSD not matching the issuer, UUID
    not found), **When** the caller requests it, **Then** a PAC-rejected error carries the PAC's
    code and message, without the password, key or certificate.
-5. **Given** a UUID, its RFCs and total, **When** the caller queries the status, **Then** it
-   receives the SAT's state, cancellability and cancellation status mapped to the interface's
-   values; a UUID the SAT does not know with those values is not found.
 
 ---
 
@@ -117,7 +115,7 @@ query the test account's balance.
   PAC by the UUID the answer gives; if neither is available it is reported as a timeout (outcome
   known to the SAT, stamp not obtainable now), never as a successful new stamp.
 - The PAC's test mode: the same endpoint with test mode on; documents stamped there are not valid
-  fiscal documents and are not known to the SAT's public consultation service.
+  fiscal documents and never reach the SAT, which answers a cancellation of them with 205.
 - The caller's timeout elapses while connecting: unavailable (nothing was sent); while waiting
   for the answer: timeout.
 - Credentials, the CSD, the password and raw PAC payloads never appear in an error, a log or a
@@ -130,7 +128,7 @@ query the test account's balance.
 **The client**
 
 - **FR-001**: The library MUST provide a Multifacturas client that implements the PAC interface of
-  spec 002 (stamp, find a stamp, request a cancellation, query the status), so a caller can
+  spec 002 (stamp, find a stamp, request a cancellation), so a caller can
   replace the simulated PAC with it and change nothing else.
 - **FR-002**: The client MUST receive from the caller its PAC user and password, whether to use
   the PAC's production or test mode, the endpoint base and the timeouts; it MUST NOT read the
@@ -155,18 +153,18 @@ query the test account's balance.
   turns into the existing stamp, so a timeout never produces a second stamp, as constitution
   v1.1.0 principle IV admits. *(Clarified with the user, 2026-11-18.)*
 
-**Cancelling and status**
+**Cancelling**
 
 - **FR-008**: Requesting a cancellation MUST use the PAC's current cancellation service (the one
   that takes the SAT reason 01–04 and the substitute UUID) and send it only what it needs from the
   CSD: the certificate and the encrypted private key as the PAC expects them, and the key's
   password; nothing else about the caller.
-- **FR-009**: The PAC's cancellation answer MUST be mapped to accepted, pending or not
-  cancellable; a refusal MUST be a PAC-rejected error with the PAC's code and message.
-- **FR-010**: Querying the status MUST answer from the SAT's public consultation service (the
-  source of truth, already used to verify QR data in spec 001), mapped to the interface's state,
-  cancellability and cancellation status; an unknown UUID or mismatching RFCs or total is not
-  found.
+- **FR-009**: The SAT's code in the PAC's cancellation answer MUST be mapped to pending (201,
+  request received) or accepted (202, already cancelled); any other SAT code, and a PAC refusal,
+  MUST be a PAC-rejected error with that code and message.
+- **FR-010**: *(Removed 2026-11-18.)* The SAT's status query does not depend on the PAC, so it is
+  not part of this client or of the PAC interface; spec 002's `query_status` and its values are
+  removed. A PAC-independent client for it is tracked in mictlanix/cfdi#6.
 
 **Balance**
 
@@ -206,10 +204,10 @@ PAC-rejected error with that code and message.
 | `CACFDI33` | Cancellation fields problem, e.g. key not matching the certificate (recorded) | PAC-rejected |
 | `CSF101` | The document cannot be cancelled (PAC examples) | PAC-rejected |
 | `40150` | Cancellation reason not valid (PAC examples) | PAC-rejected |
-| `201` | SAT received the cancellation request | The SAT's status decides the answer |
-| `202` | SAT: cancellation previously requested | The SAT's status decides the answer |
+| `201` | SAT received the cancellation request | Pending |
+| `202` | SAT: cancellation previously requested | Accepted |
 | `203`, `205` | SAT: issuer does not match; UUID does not exist (205 recorded) | PAC-rejected |
-| `MF-ANSWER`, `SAT-ANSWER`, `SOAP-FAULT` | Library: unusable success answer, unexpected SAT status, SOAP Fault | PAC-rejected |
+| `MF-ANSWER`, `SAT-ANSWER`, `SOAP-FAULT` | Library: unusable success answer, a cancellation answer without a SAT code, SOAP Fault | PAC-rejected |
 
 ### Key Entities
 
@@ -256,12 +254,10 @@ PAC-rejected error with that code and message.
   credentials for it, which the opt-in tests and planning use (user's decision, 2026-11-18).
 - The current system disables TLS certificate verification and uses the `facturacionmexico` hosts
   over plain HTTP; this client does neither.
-- The SAT's public consultation service needs no credentials and is the one spec 001's QR data was
-  verified against.
-- Not verified, because documents stamped in test mode never reach the SAT: that the SAT answers
-  a request to cancel a non-cancellable document by receiving it (201) and then reporting it as
-  not cancellable in its status. If the SAT instead refuses the request with its own code, that
-  code reaches the caller as a PAC-rejected error carrying it.
+- Not verified, because documents stamped in test mode never reach the SAT: how the SAT answers
+  a request to cancel a non-cancellable document. If it refuses with its own code, that code
+  reaches the caller as a PAC-rejected error; if it receives it (201), the answer is pending and
+  the SAT's status (mictlanix/cfdi#6) shows it is not cancellable.
 - Not verified in test mode (it answers `200` there): that the PAC's retrieval by UUID returns the
   stamped document in production, as the current system relies on; the client's path for a 307
   answer that carries only the UUID depends on it.
