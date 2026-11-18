@@ -28,6 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Certificado de Destrucción 1.0, Servicios Parciales de Construcción 1.0, CFDI Registro Fiscal
   1.0, PFIC 1.0, Instituciones Educativas Privadas 1.0, Venta de Vehículos 1.1 and Hidrocarburos
   y Petrolíferos 1.0.
+- `mictlanix.cfdi.pac`: one asynchronous PAC interface, `PacClient` (stamp, find a stamp,
+  request a cancellation, query the SAT status), with immutable values (`Stamp`,
+  `CancellationRequest`, `CsdCredentials`, `SatStatus`) and typed errors (`PacRejected`,
+  `PacUnavailable`, `PacTimeout`, under `PacError`). Cancellation requests are validated on
+  construction (reason 01 requires the substitute UUID, 02–04 forbid it).
+- `SimulatedPac`, an offline PAC for development and tests: every stamping and cancellation
+  outcome configurable per document or UUID, the recipient's answers, and state in a
+  caller-supplied store (`SimulatorStore`, `InMemoryStore` by default) that several processes
+  can share.
+
+### Changed
+
+- The fixed Mexico City offset moved to a shared private module, used by sealing and by the
+  simulated PAC's clock; no behaviour change.
 
 ### Not emitted
 

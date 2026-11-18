@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -10,13 +10,9 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, load_der_private_key
 
 from mictlanix.cfdi._errors import CsdError
+from mictlanix.cfdi._mexico import MEXICO_CITY
 
 _Reason = CsdError.Reason
-
-# Mexico City time, a fixed UTC-6 since Mexico abolished daylight saving time in October 2022,
-# so for every certificate still valid. The SAT's naive datetimes, `Fecha` among them, are
-# local time, and mbe stores certificate validity the same way.
-_MEXICO_CITY = timezone(timedelta(hours=-6))
 
 
 class CSD:
@@ -75,7 +71,7 @@ class CSD:
 
 def _local(moment: datetime) -> datetime:
     """The certificate's UTC time as naive Mexico City time."""
-    return moment.astimezone(_MEXICO_CITY).replace(tzinfo=None)
+    return moment.astimezone(MEXICO_CITY).replace(tzinfo=None)
 
 
 def _certificate_number(certificate: x509.Certificate) -> str:
