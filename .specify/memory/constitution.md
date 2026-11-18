@@ -45,7 +45,9 @@ taxpayer's name.
 - PAC clients MUST be async.
 - PAC clients MUST raise typed errors: rejected (carrying the PAC's code and message),
   unavailable, and timeout with unknown outcome.
-- A timeout MUST be resolved by looking the stamp up, never by stamping again.
+- A timeout MUST be resolved by looking the stamp up, or by resubmitting the same sealed document
+  to a PAC that answers a resubmission with the existing stamp; never by a call that can produce
+  a second stamp.
 - Callers MUST never need to parse error text.
 
 Rationale: a duplicated stamp is a second fiscal document that has to be cancelled; typed errors
@@ -93,4 +95,4 @@ that other systems embed.
   PATCH for clarifications and wording.
 - PRs and reviews MUST verify compliance with this constitution.
 
-**Version**: 1.0.2 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-18
+**Version**: 1.1.0 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-18
