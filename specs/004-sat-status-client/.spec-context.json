@@ -1,0 +1,52 @@
+{
+  "workflow": "speckit",
+  "specName": "Generic SAT CFDI Status Client",
+  "branch": "004-sat-status-client",
+  "currentStep": "tasks",
+  "status": "ready-to-implement",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T21:30:32.906Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T21:32:43.711Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T21:33:55.679Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T21:36:59.036Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T22:00:41.474Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T22:01:57.234Z"
+    }
+  ],
+  "telemetryInstanceId": "6e9195fd-9f0e-4cb1-8bb5-abefa2dd88ed"
+}
