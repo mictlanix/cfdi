@@ -2,8 +2,8 @@
 
 Python library for Mexican CFDI 4.0 electronic invoices. It builds documents of every type with
 their complements, derives their totals, validates them against the SAT's schemas and Anexo 20
-rules, seals them with the issuer's CSD, and reads stamped documents. Talking to a PAC is not
-part of this release.
+rules, seals them with the issuer's CSD, and reads stamped documents. Stamping and cancelling go
+through one PAC interface; this release ships a simulated PAC, and real PAC clients come next.
 
 Everything runs offline: the SAT's XSDs, stylesheets and the catalog data the rules use ship
 inside the package.
@@ -87,6 +87,49 @@ xml = seal(invoice, csd)  # sealed XML, ready for a PAC
 `SubTotal`, `Total` and the tax summary are derived by the library. A payment receipt is built
 with `payment_comprobante`; a stamped document is read with `read`, and `timbre`, `qr_data` and
 `tfd_original_string` give its stamp, QR data and the stamp's original string.
+
+## Stamping and cancelling
+
+Every PAC client implements `mictlanix.cfdi.pac.PacClient`, so the code that stamps and cancels is
+written once. `SimulatedPac` implements it offline, for development and tests; the first real PAC
+(Facturación México / Multifacturas) comes next on the same interface.
+
+```python
+from mictlanix.cfdi.pac import (
+    CancellationRequest,
+    CsdCredentials,
+    PacClient,
+    PacTimeout,
+    SimulatedPac,
+)
+
+pac: PacClient = SimulatedPac()
+
+try:
+    stamp = await pac.stamp(xml)  # the stamped XML and its TimbreFiscalDigital
+except PacTimeout:
+    stamp = await pac.find_stamp(xml)  # never stamp twice: look the stamp up instead
+
+answer = await pac.request_cancellation(
+    CancellationRequest(
+        issuer_rfc='EKU9003173C9',
+        recipient_rfc='URE180429TM6',
+        uuid=stamp.timbre.UUID,
+        total=Decimal('116.00'),
+        reason='02',
+        csd=CsdCredentials(certificate=cer_bytes, private_key=key_bytes, password=password),
+    )
+)  # accepted, pending (the recipient must accept) or not_cancellable
+status = await pac.query_status(
+    'EKU9003173C9', 'URE180429TM6', stamp.timbre.UUID, Decimal('116.00')
+)
+```
+
+Errors are `PacRejected` (with the PAC's `code` and `message`), `PacUnavailable` (nothing was
+done) and `PacTimeout` (outcome unknown), all `PacError`. The simulated PAC's outcomes can be set
+per document with `configure_stamp` and per UUID with `configure_cancellation`, and
+`answer_as_receiver` plays the recipient of a pending cancellation. Its state lives in a
+`SimulatorStore` (in memory by default), which several processes can share.
 
 ## Supported complements
 
