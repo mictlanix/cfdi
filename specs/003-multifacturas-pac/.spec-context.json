@@ -1,0 +1,52 @@
+{
+  "workflow": "speckit",
+  "specName": "Facturación México (Multifacturas) PAC Client",
+  "branch": "003-multifacturas-pac",
+  "currentStep": "implement",
+  "status": "implementing",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T19:37:27.286Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T19:39:50.268Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T19:45:28.544Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T19:52:25.692Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T19:53:59.378Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T20:27:52.425Z"
+    }
+  ],
+  "telemetryInstanceId": "9330e585-8ed1-46f3-88c1-8496f989edd6"
+}
