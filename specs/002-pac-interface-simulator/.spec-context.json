@@ -1,0 +1,59 @@
+{
+  "workflow": "speckit",
+  "specName": "Generic PAC Client Interface and a Simulated PAC",
+  "branch": "002-pac-interface-simulator",
+  "currentStep": "implement",
+  "status": "implementing",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T16:10:41.444Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T16:14:32.826Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T16:21:20.161Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T16:25:18.783Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T16:29:56.388Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-18T16:31:23.842Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-18T17:32:37.660Z"
+    }
+  ],
+  "telemetryInstanceId": "b04a1ae4-3cda-4beb-8ff9-780f0a8e2e71"
+}
