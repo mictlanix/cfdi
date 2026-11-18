@@ -1,6 +1,6 @@
 # Mictlanix CFDI Library Constitution
 
-The Mictlanix CFDI Library (repository `mictlanix/cfdi`, import package `mtx_cfdi`) is a
+The Mictlanix CFDI Library (repository `mictlanix/cfdi`, import package `mictlanix.cfdi`) is a
 Python 3.12 library that builds, validates and seals CFDI 4.0 documents with their complements,
 and talks to PACs to stamp and cancel them.
 
@@ -53,7 +53,8 @@ let callers react correctly without guessing from messages.
 
 ### V. A Small, Stable, Typed Public API
 
-- Everything public MUST be exported from `mtx_cfdi`.
+- Everything public MUST be exported from `mictlanix.cfdi`; PAC clients MUST be exported from
+  `mictlanix.cfdi.pac`.
 - The public API MUST be fully typed and checked by mypy in strict mode.
 - The library follows semantic versioning: breaking changes MUST happen only in a major release
   and MUST be listed in the changelog.
@@ -91,4 +92,4 @@ that other systems embed.
   PATCH for clarifications and wording.
 - PRs and reviews MUST verify compliance with this constitution.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-17
+**Version**: 1.0.1 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-17
