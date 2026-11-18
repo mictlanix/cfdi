@@ -148,6 +148,32 @@ returns `None`: the PAC cannot look a stamp
 up by sealed document, and it answers a resubmission of the same sealed document with the
 existing stamp, so after a `PacTimeout` you stamp the same document again and get the same UUID.
 
+## The SAT status of a CFDI
+
+`mictlanix.cfdi.sat` asks the SAT's public status service (ConsultaCFDIService) for the status of
+any CFDI, whichever PAC stamped it. It needs no credentials, so it serves the documents you issued
+and the ones you received alike.
+
+```python
+from mictlanix.cfdi.sat import SatConsultaClient
+
+status = await SatConsultaClient().query_status(
+    'EKU9003173C9', 'URE180429TM6', uuid, Decimal('116.00')
+)
+status.state  # valid, cancelled or not_found
+status.cancellability  # without_acceptance, with_acceptance or not_cancellable
+status.cancellation  # none, pending, accepted, rejected or expired
+```
+
+`SatConsultaSettings` sets the endpoint (the SAT's by default) and the timeouts; every call uses
+HTTPS with certificate verification. Errors are `SatRejected` (with a `code`), `SatUnavailable`
+and `SatTimeout`, all `SatError`. An answer outside the known values is `SatRejected('SAT-ANSWER')`,
+never a guess.
+
+To follow a cancellation offline, `SimulatedSatStatusClient(pac)` answers from a `SimulatedPac`'s
+state: pending once the recipient must accept, then accepted, rejected or expired as
+`answer_as_receiver` decides.
+
 ## Supported complements
 
 Each complement is a module of `mictlanix.cfdi`, at the version the SAT accepts today:

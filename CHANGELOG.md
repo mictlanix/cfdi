@@ -44,11 +44,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test mode; live tests are opt-in through `MULTIFACTURAS_USER` and `MULTIFACTURAS_PASSWORD`.
 - Constitution v1.1.0: a timeout may also be resolved by resubmitting the same sealed document
   to a PAC that answers a resubmission with the existing stamp.
+- `mictlanix.cfdi.sat`: the SAT's status of any CFDI from its public status service
+  (ConsultaCFDIService), independent of the PAC and without credentials. `SatStatusClient` with
+  its values (`SatStatus`, `SatState`, `Cancellability`, `CancellationStatus`) and errors
+  (`SatRejected`, `SatUnavailable`, `SatTimeout`, under `SatError`); `SatConsultaClient`
+  configured with `SatConsultaSettings`; `SimulatedSatStatusClient`, which answers from a
+  `SimulatedPac`'s state. Offline tests replay a recorded answer and synthetic ones; a live test
+  is opt-in through `SAT_CONSULTA_LIVE=1`.
+- Constitution v1.1.1 and v1.1.2: the SAT status surface (its protocol, values, enums, errors and
+  every SAT status client) is exported from `mictlanix.cfdi.sat`, and only from there.
 
 ### Changed
 
 - The fixed Mexico City offset moved to a shared private module, used by sealing and by the
   simulated PAC's clock; no behaviour change.
+- The HTTPS transport of the PAC clients moved to a shared private module, used by the PAC and
+  the SAT clients; no behaviour change.
 
 ### Not emitted
 

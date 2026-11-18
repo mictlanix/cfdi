@@ -1,29 +1,27 @@
-"""A small SOAP 1.1 client over the standard library, shared by the PAC clients.
+"""The PAC's SOAP: RPC/encoded envelopes, their answers and error text, over the shared transport.
 
-``_post`` is the raw HTTPS exchange and the one seam offline tests replace; ``call`` builds an
-RPC envelope, posts it and returns the answer's fields. Failures to connect are
-``PacUnavailable``; anything after the connection is open is ``PacTimeout``; a SOAP Fault is
-``PacRejected('SOAP-FAULT')``. Every error is raised ``from None`` and quotes nothing it received.
+``call`` builds an RPC envelope, posts it through ``mictlanix.cfdi._soap`` and returns the answer's
+fields. The transport's failures become the PAC errors: ``Unreachable`` is ``PacUnavailable``,
+``NoAnswer`` is ``PacTimeout`` and ``Fault`` is ``PacRejected('SOAP-FAULT')``. Every error is
+raised ``from None`` and quotes nothing it received.
 """
 
 from __future__ import annotations
 
-import http.client
 import json
 import re
-import ssl
 from typing import TYPE_CHECKING
-from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
+from mictlanix.cfdi import _soap as transport
 from mictlanix.cfdi.pac._errors import PacRejected, PacTimeout, PacUnavailable
 
 if TYPE_CHECKING:
     from mictlanix.cfdi.pac.multifacturas import MultifacturasSettings
 
-SOAP_ENV = 'http://schemas.xmlsoap.org/soap/envelope/'
+SOAP_ENV = transport.SOAP_ENV
 RPC_NAMESPACE = 'urn:wservicewsdl'
 _QUOTES = {'"': '&quot;', "'": '&apos;'}
 _CODE = re.compile(r'([A-Z0-9]+) - (.+)', re.S)
@@ -56,38 +54,17 @@ def envelope(operation: str, params: Params) -> bytes:
     ).encode()
 
 
-def _parse(raw: bytes) -> etree._Element | None:
-    parser = etree.XMLParser(no_network=True, resolve_entities=False, load_dtd=False)
-    try:
-        return etree.fromstring(raw, parser)
-    except (etree.XMLSyntaxError, ValueError):
-        return None
-
-
-def _body_child(root: etree._Element | None) -> etree._Element | None:
-    if root is None or root.tag != f'{{{SOAP_ENV}}}Envelope':
-        return None
-    body = root.find(f'{{{SOAP_ENV}}}Body')
-    if body is None or len(body) == 0:
-        return None
-    return body[0]
-
-
-def _is_fault(raw: bytes) -> bool:
-    child = _body_child(_parse(raw))
-    return child is not None and etree.QName(child).localname == 'Fault'
-
-
 def fields(raw: bytes) -> dict[str, str]:
     """The leaf elements of an answer's body as strings.
 
     Raises ``PacRejected('SOAP-FAULT')`` for a Fault and ``PacTimeout`` for anything that is not
     a SOAP envelope with a body.
     """
-    child = _body_child(_parse(raw))
-    if child is None:
+    try:
+        child = transport.answer(raw)
+    except transport.NoAnswer:
         raise PacTimeout() from None
-    if etree.QName(child).localname == 'Fault':
+    except transport.Fault:
         raise PacRejected('SOAP-FAULT', 'the service refused the request') from None
     return {
         etree.QName(node).localname: node.text or ''
@@ -122,48 +99,15 @@ def error_of(numero: str, texto: str) -> tuple[str, str]:
     return numero, text
 
 
-def _post(url: str, action: str, body: bytes, settings: MultifacturasSettings) -> bytes:
-    """Post a SOAP request over verified TLS and return the answer's body."""
-    parts = urlsplit(url)
-    path = parts.path + (f'?{parts.query}' if parts.query else '')
-    try:
-        port = parts.port
-    except ValueError:
-        raise PacUnavailable() from None
-    connection = http.client.HTTPSConnection(
-        parts.hostname or '',
-        port,
-        timeout=settings.connect_timeout,
-        context=ssl.create_default_context(),
-    )
-    try:
-        try:
-            connection.connect()
-        except (OSError, http.client.HTTPException, UnicodeError):
-            raise PacUnavailable() from None
-        try:
-            if connection.sock is not None:
-                connection.sock.settimeout(settings.read_timeout)
-            connection.request(
-                'POST',
-                path,
-                body,
-                {'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': f'"{action}"'},
-            )
-            response = connection.getresponse()
-            status, raw = response.status, response.read()
-        except (OSError, http.client.HTTPException):
-            raise PacTimeout() from None
-    finally:
-        connection.close()
-    if status != 200 and not _is_fault(raw):
-        raise PacTimeout() from None
-    return raw
-
-
 def call(
     url: str, operation: str, params: Params, settings: MultifacturasSettings
 ) -> dict[str, str]:
     """Call an RPC operation of the PAC and return the answer's fields."""
     action = f'{RPC_NAMESPACE}#{operation}'
-    return fields(_post(url, action, envelope(operation, params), settings))
+    try:
+        raw = transport._post(url, action, envelope(operation, params), settings)
+    except transport.Unreachable:
+        raise PacUnavailable() from None
+    except transport.NoAnswer:
+        raise PacTimeout() from None
+    return fields(raw)

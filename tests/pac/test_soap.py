@@ -1,14 +1,12 @@
-"""The SOAP transport: envelopes, answers, error text, and which failures are which."""
+"""The PAC's SOAP: RPC envelopes, answers, error text, and the PAC errors of each failure."""
 
-import http.client
-import socket
-import ssl
 from pathlib import Path
 from typing import Any
 
 import pytest
 from lxml import etree
 
+from mictlanix.cfdi import _soap as transport
 from mictlanix.cfdi.pac import (
     MultifacturasSettings,
     PacError,
@@ -87,57 +85,6 @@ def test_error_text_without_a_code_uses_the_number() -> None:
     assert _soap.error_of('7', 'Algo salió mal') == ('7', 'Algo salió mal')
 
 
-class FakeConnection:
-    """Stands in for http.client.HTTPSConnection; fails where it is told to."""
-
-    created: list['FakeConnection'] = []
-
-    def __init__(
-        self, host: str, port: int | None = None, *, timeout: float, context: ssl.SSLContext
-    ) -> None:
-        self.host, self.port, self.timeout, self.context = host, port, timeout, context
-        self.sock: Any = None
-        FakeConnection.created.append(self)
-
-    fail_connect: BaseException | None = None
-    fail_after: BaseException | None = None
-    status = 200
-    body = b''
-
-    def connect(self) -> None:
-        if FakeConnection.fail_connect is not None:
-            raise FakeConnection.fail_connect
-        self.sock = self
-
-    def settimeout(self, value: float) -> None:
-        self.read_timeout = value
-
-    def request(self, method: str, path: str, body: bytes, headers: dict[str, str]) -> None:
-        self.sent = (method, path, body, headers)
-        if FakeConnection.fail_after is not None:
-            raise FakeConnection.fail_after
-
-    def getresponse(self) -> 'FakeConnection':
-        return self
-
-    def read(self) -> bytes:
-        return FakeConnection.body
-
-    def close(self) -> None:
-        pass
-
-
-@pytest.fixture
-def connection(monkeypatch: pytest.MonkeyPatch) -> type[FakeConnection]:
-    FakeConnection.created = []
-    FakeConnection.fail_connect = None
-    FakeConnection.fail_after = None
-    FakeConnection.status = 200
-    FakeConnection.body = _fixture('saldo.xml')
-    monkeypatch.setattr(http.client, 'HTTPSConnection', FakeConnection)
-    return FakeConnection
-
-
 def _raised(call: Any) -> PacError:
     with pytest.raises(PacError) as caught:
         call()
@@ -147,77 +94,56 @@ def _raised(call: Any) -> PacError:
     return caught.value
 
 
-def test_post_sends_over_verified_tls_with_the_timeouts(connection: type[FakeConnection]) -> None:
-    raw = _soap._post(URL, 'urn:wservicewsdl#saldo', b'<x/>', SETTINGS)
-    assert raw == _fixture('saldo.xml')
-    sent = connection.created[0]
-    assert sent.host == 'ws.example.test'
-    assert sent.timeout == 3.0 and sent.read_timeout == 7.0
-    assert sent.context.check_hostname and sent.context.verify_mode == ssl.CERT_REQUIRED
-    method, path, body, headers = sent.sent
-    assert (method, path, body) == ('POST', '/pac/index.php', b'<x/>')
-    assert headers['SOAPAction'] == '"urn:wservicewsdl#saldo"'
-    assert headers['Content-Type'].startswith('text/xml')
+@pytest.fixture
+def post(monkeypatch: pytest.MonkeyPatch) -> list[bytes | Exception]:
+    """Replaces the shared transport's ``_post`` with a queue of answers or exceptions."""
+    answers: list[bytes | Exception] = []
+
+    def fake(url: str, action: str, body: bytes, timeouts: Any) -> bytes:
+        answer = answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    monkeypatch.setattr(transport, '_post', fake)
+    return answers
 
 
 @pytest.mark.parametrize(
-    'error',
-    [
-        OSError('refused'),
-        socket.gaierror('dns'),
-        ssl.SSLError('cert'),
-        TimeoutError(),
-        UnicodeError('label empty or too long'),
-    ],
+    ('error', 'expected'),
+    [(transport.Unreachable(), PacUnavailable), (transport.NoAnswer(), PacTimeout)],
 )
-def test_a_failure_to_connect_is_unavailable(
-    connection: type[FakeConnection], error: BaseException
+def test_call_maps_the_transport_failures(
+    post: list[bytes | Exception], error: Exception, expected: type[PacError]
 ) -> None:
-    connection.fail_connect = error
-    assert isinstance(_raised(lambda: _soap._post(URL, 'a', b'', SETTINGS)), PacUnavailable)
+    post.append(error)
+    assert isinstance(_raised(lambda: _soap.call(URL, 'saldo', {}, SETTINGS)), expected)
 
 
-def test_an_endpoint_with_a_bad_port_is_unavailable(connection: type[FakeConnection]) -> None:
-    url = 'https://ws.example.test:abc/pac/index.php'
-    assert isinstance(_raised(lambda: _soap._post(url, 'a', b'', SETTINGS)), PacUnavailable)
-    assert connection.created == []
+def test_a_fault_is_rejected(post: list[bytes | Exception]) -> None:
+    post.append(FAULT)
+    error = _raised(lambda: _soap.call(URL, 'saldo', {}, SETTINGS))
+    assert isinstance(error, PacRejected) and error.code == 'SOAP-FAULT'
+    assert error.message == 'the service refused the request'
+    assert 'secret detail' not in str(error)
 
 
-@pytest.mark.parametrize(
-    'error', [TimeoutError(), ConnectionResetError(), http.client.HTTPException('bad')]
-)
-def test_a_failure_after_connecting_is_a_timeout(
-    connection: type[FakeConnection], error: BaseException
-) -> None:
-    connection.fail_after = error
-    assert isinstance(_raised(lambda: _soap._post(URL, 'a', b'', SETTINGS)), PacTimeout)
-
-
-def test_a_fault_is_rejected_whatever_the_status(connection: type[FakeConnection]) -> None:
-    connection.body = FAULT
-    for status in (500, 200):
-        connection.status = status
-        error = _raised(lambda: _soap.call(URL, 'saldo', {}, SETTINGS))
-        assert isinstance(error, PacRejected) and error.code == 'SOAP-FAULT'
-        assert 'secret detail' not in str(error)
-
-
-def test_another_status_is_a_timeout(connection: type[FakeConnection]) -> None:
-    connection.status = 503
-    connection.body = b'<html>busy</html>'
-    assert isinstance(_raised(lambda: _soap.call(URL, 'saldo', {}, SETTINGS)), PacTimeout)
-
-
-def test_a_200_body_that_is_not_an_envelope_is_a_timeout(
-    connection: type[FakeConnection],
-) -> None:
+def test_a_body_that_is_not_an_envelope_is_a_timeout(post: list[bytes | Exception]) -> None:
     for body in (b'<html>oops</html>', b'', b'not xml at all'):
-        connection.body = body
+        post.append(body)
         assert isinstance(_raised(lambda: _soap.call(URL, 'saldo', {}, SETTINGS)), PacTimeout)
 
 
-def test_call_builds_posts_and_parses(connection: type[FakeConnection]) -> None:
+def test_call_builds_posts_and_parses(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent: list[tuple[str, str, bytes, Any]] = []
+
+    def fake(url: str, action: str, body: bytes, timeouts: Any) -> bytes:
+        sent.append((url, action, body, timeouts))
+        return _fixture('saldo.xml')
+
+    monkeypatch.setattr(transport, '_post', fake)
     fields = _soap.call(URL, 'saldo', {'rfc': 'USER', 'clave': 'PASSWORD'}, SETTINGS)
     assert fields['saldo'] == '20'
-    body = connection.created[0].sent[2]
+    url, action, body, timeouts = sent[0]
+    assert (url, action, timeouts) == (URL, 'urn:wservicewsdl#saldo', SETTINGS)
     assert b'<rfc xsi:type="xsd:string">USER</rfc>' in body
