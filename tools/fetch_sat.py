@@ -1,8 +1,8 @@
 """Download the SAT's XSDs and XSLTs into the package and record them in the manifest.
 
 Dev-only; never shipped. Each file is stored byte-identical under
-``src/mictlanix/cfdi/sat/sitio_internet/`` at the path it has on the SAT's server, and
-``src/mictlanix/cfdi/sat/manifest.json`` records its URL, SHA-256, publication date (the
+``src/mictlanix/cfdi/_sat_files/sitio_internet/`` at the path it has on the SAT's server, and
+``src/mictlanix/cfdi/_sat_files/manifest.json`` records its URL, SHA-256, publication date (the
 server's ``Last-Modified`` header) and retrieval date.
 
 The URLs come from an explicit table, not from following includes: a complement's XSD is not
@@ -24,7 +24,7 @@ from pathlib import Path
 
 SAT_BASE = 'http://www.sat.gob.mx/sitio_internet/'
 ROOT = Path(__file__).resolve().parent.parent
-SAT_DIR = ROOT / 'src' / 'mictlanix' / 'cfdi' / 'sat'
+SAT_DIR = ROOT / 'src' / 'mictlanix' / 'cfdi' / '_sat_files'
 MANIFEST = SAT_DIR / 'manifest.json'
 USER_AGENT = 'Mozilla/5.0 (compatible; sat-artifact-fetcher)'
 

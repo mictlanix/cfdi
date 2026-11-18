@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 SAT_BASE = 'http://www.sat.gob.mx/sitio_internet/'
 XS = 'http://www.w3.org/2001/XMLSchema'
 
-_PACKAGE_ROOT = files('mictlanix.cfdi').joinpath('sat', 'sitio_internet')
+_PACKAGE_ROOT = files('mictlanix.cfdi').joinpath('_sat_files', 'sitio_internet')
 
 
 class SatArtifactError(Exception):

@@ -217,8 +217,8 @@ that complement kept as `RawXml`.
 
 ## Updating the SAT's files
 
-The SAT's files are vendored unmodified, each recorded in `src/mictlanix/cfdi/sat/manifest.json`
-with its URL, SHA-256 and publication date. Updating them is a deliberate change:
+The SAT's files are vendored unmodified in `src/mictlanix/cfdi/_sat_files/`, each recorded in its
+`manifest.json` with its URL, SHA-256 and publication date. Updating them is a deliberate change:
 
 ```sh
 uv run python tools/fetch_sat.py --refresh     # XSDs and stylesheets

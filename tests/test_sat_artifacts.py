@@ -9,7 +9,7 @@ from lxml import etree
 
 from mictlanix.cfdi import _sat
 
-SAT_DIR = files('mictlanix.cfdi').joinpath('sat')
+SAT_DIR = files('mictlanix.cfdi').joinpath('_sat_files')
 
 CFDV40 = _sat.SAT_BASE + 'cfd/4/cfdv40.xsd'
 CADENA_40 = _sat.SAT_BASE + 'cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt'
