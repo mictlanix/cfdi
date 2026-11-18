@@ -1,0 +1,173 @@
+[
+ {
+  "impuesto": "002",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0",
+  "traslado": true,
+  "retencion": false
+ },
+ {
+  "impuesto": "002",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.16",
+  "traslado": true,
+  "retencion": false
+ },
+ {
+  "impuesto": "002",
+  "factor": "Tasa",
+  "rango": true,
+  "minimo": "0",
+  "maximo": "0.16",
+  "traslado": false,
+  "retencion": true
+ },
+ {
+  "impuesto": "002",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.08",
+  "traslado": true,
+  "retencion": false
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.265",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.3",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.53",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.5",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "1.6",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.304",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.25",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.09",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.08",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.07",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.06",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0.03",
+  "traslado": true,
+  "retencion": false
+ },
+ {
+  "impuesto": "003",
+  "factor": "Tasa",
+  "rango": false,
+  "minimo": null,
+  "maximo": "0",
+  "traslado": true,
+  "retencion": false
+ },
+ {
+  "impuesto": "003",
+  "factor": "Cuota",
+  "rango": true,
+  "minimo": "0",
+  "maximo": "72.1605",
+  "traslado": true,
+  "retencion": true
+ },
+ {
+  "impuesto": "001",
+  "factor": "Tasa",
+  "rango": true,
+  "minimo": "0",
+  "maximo": "0.35",
+  "traslado": false,
+  "retencion": true
+ }
+]

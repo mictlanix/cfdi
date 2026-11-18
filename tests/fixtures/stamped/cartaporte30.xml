@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cartaporte30="http://www.sat.gob.mx/CartaPorte30" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Fecha="2024-01-15T09:00:00" Sello="AA==" NoCertificado="30001000000500003416" Certificado="AA==" SubTotal="0" Moneda="XXX" Total="0" TipoDeComprobante="T" Exportacion="01" LugarExpedicion="42501">
+  <cfdi:Emisor Rfc="EKU9003173C9" Nombre="ESCUELA KEMPER URGATE" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="EKU9003173C9" Nombre="ESCUELA KEMPER URGATE" DomicilioFiscalReceptor="42501" RegimenFiscalReceptor="601" UsoCFDI="S01"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="01010101" Cantidad="1" ClaveUnidad="ACT" Descripcion="Mercancia" ValorUnitario="0" Importe="0" ObjetoImp="01"/>
+  </cfdi:Conceptos>
+  <cfdi:Complemento>
+    <cartaporte30:CartaPorte Version="3.0" IdCCP="CCC5D24E-0D1F-4A5B-8C9D-0E1F2A3B4C5D" TranspInternac="No" TotalDistRec="10"/>
+    <tfd:TimbreFiscalDigital Version="1.1" UUID="3B1C2D4E-5F60-4718-89AB-CDEF01234567" FechaTimbrado="2024-01-15T09:05:00" RfcProvCertif="AAA010101AAA" SelloCFD="AA==" NoCertificadoSAT="00001000000500000001" SelloSAT="AA=="/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

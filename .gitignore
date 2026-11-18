@@ -227,3 +227,5 @@ __marimo__/
 *.key
 *.pfx
 *.pem
+!tests/fixtures/csd/*.cer
+!tests/fixtures/csd/*.key
