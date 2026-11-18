@@ -10,16 +10,22 @@ import mictlanix.cfdi as cfdi
 import mictlanix.cfdi.pac as pac
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-CONTRACT = ROOT / 'specs' / '002-pac-interface-simulator' / 'contracts' / 'public-api.md'
+CONTRACTS = [
+    ROOT / 'specs' / '002-pac-interface-simulator' / 'contracts' / 'public-api.md',
+    ROOT / 'specs' / '003-multifacturas-pac' / 'contracts' / 'public-api.md',
+]
 PACKAGE = ROOT / 'src' / 'mictlanix' / 'cfdi' / 'pac'
 
 
 def _contract_exports() -> set[str]:
-    text = CONTRACT.read_text(encoding='utf-8')
-    block = re.search(r'## Exports\n\n```python\n(.*?)```', text, re.S)
-    assert block is not None
-    code = re.sub(r'#[^\n]*', '', block.group(1))
-    return set(re.findall(r'[A-Za-z_][A-Za-z0-9_]*', code))
+    names: set[str] = set()
+    for contract in CONTRACTS:
+        text = contract.read_text(encoding='utf-8')
+        block = re.search(r'## Exports\n\n```python\n(.*?)```', text, re.S)
+        assert block is not None, contract
+        code = re.sub(r'#[^\n]*', '', block.group(1))
+        names |= set(re.findall(r'[A-Za-z_][A-Za-z0-9_]*', code))
+    return names
 
 
 def test_exports_equal_the_contract_exactly() -> None:

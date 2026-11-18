@@ -1,4 +1,4 @@
-"""User Story 2: cancelling through the simulated PAC and following the SAT status."""
+"""User Story 2: cancelling through the simulated PAC."""
 
 from dataclasses import dataclass
 from datetime import timedelta
@@ -9,18 +9,14 @@ import pytest
 
 from mictlanix.cfdi import read
 from mictlanix.cfdi.pac import (
-    Cancellability,
     CancellationAnswer,
     CancellationOutcome,
     CancellationRequest,
-    CancellationStatus,
     CsdCredentials,
     PacRejected,
     PacTimeout,
     PacUnavailable,
     ReceiverAnswer,
-    SatState,
-    SatStatus,
     SimulatedPac,
     Stamp,
     StampOutcome,
@@ -33,17 +29,9 @@ Out = CancellationOutcome
 NEVER_STAMPED = '6A1B2C3D-4E5F-4061-8293-A4B5C6D7E8F9'
 
 
-def status(state: str, cancellability: str, cancellation: str) -> SatStatus:
-    return SatStatus(
-        state=SatState(state),
-        cancellability=Cancellability(cancellability),
-        cancellation=CancellationStatus(cancellation),
-    )
-
-
 @dataclass
 class Doc:
-    """A stamped document and the values a cancellation and a query need."""
+    """A stamped document and the values a cancellation needs."""
 
     pac: SimulatedPac
     stamp: Stamp
@@ -70,16 +58,6 @@ class Doc:
 
     async def cancel(self, **changes: Any) -> CancellationAnswer:
         return await self.pac.request_cancellation(self.request(**changes))
-
-    async def status(self, **changes: Any) -> SatStatus:
-        values: dict[str, Any] = {
-            'issuer_rfc': self.issuer,
-            'recipient_rfc': self.recipient,
-            'uuid': self.uuid,
-            'total': self.total,
-        }
-        values.update(changes)
-        return await self.pac.query_status(**values)
 
     async def configure(self, outcome: CancellationOutcome, **options: Any) -> None:
         await self.pac.configure_cancellation(self.uuid, outcome, **options)
@@ -139,17 +117,10 @@ def test_outcome_and_answer_values() -> None:
     }
 
 
-async def test_status_before_any_request(stamped: Any, clock: Clock) -> None:
-    doc = await stamped()
-    assert await doc.status() == status('valid', 'without_acceptance', 'none')
-    clock.advance(timedelta(hours=24))
-    assert await doc.status() == status('valid', 'with_acceptance', 'none')
-
-
 async def test_under_24_hours_is_cancelled_at_once(stamped: Any) -> None:
     doc = await stamped(1)
     assert await doc.cancel() == A.ACCEPTED
-    assert await doc.status() == status('cancelled', 'without_acceptance', 'accepted')
+    assert await doc.cancel() == A.ACCEPTED
 
 
 async def test_exactly_24_hours_needs_acceptance(stamped: Any) -> None:
@@ -160,47 +131,37 @@ async def test_exactly_24_hours_needs_acceptance(stamped: Any) -> None:
 async def test_after_24_hours_it_goes_pending(stamped: Any) -> None:
     doc = await stamped(25)
     assert await doc.cancel() == A.PENDING
-    assert await doc.status() == status('valid', 'with_acceptance', 'pending')
     assert await doc.cancel() == A.PENDING
-    assert await doc.status() == status('valid', 'with_acceptance', 'pending')
 
 
 @pytest.mark.parametrize(
-    ('answer', 'after'),
+    ('answer', 'then'),
     [
-        (ReceiverAnswer.ACCEPT, ('cancelled', 'with_acceptance', 'accepted')),
-        (ReceiverAnswer.REJECT, ('valid', 'with_acceptance', 'rejected')),
-        (ReceiverAnswer.EXPIRE, ('cancelled', 'with_acceptance', 'expired')),
+        (ReceiverAnswer.ACCEPT, A.ACCEPTED),
+        (ReceiverAnswer.REJECT, A.PENDING),
+        (ReceiverAnswer.EXPIRE, A.ACCEPTED),
     ],
 )
 async def test_the_receiver_answers(
-    stamped: Any, answer: ReceiverAnswer, after: tuple[str, str, str]
+    stamped: Any, answer: ReceiverAnswer, then: CancellationAnswer
 ) -> None:
     doc = await stamped(25)
     await doc.cancel()
     await doc.receiver(answer)
-    assert await doc.status() == status(*after)
-    if answer == ReceiverAnswer.REJECT:
-        assert await doc.cancel() == A.PENDING
-        assert await doc.status() == status('valid', 'with_acceptance', 'pending')
-    else:
-        assert await doc.cancel() == A.ACCEPTED
-        assert await doc.status() == status(*after)
+    assert await doc.cancel() == then
 
 
 async def test_not_cancellable(stamped: Any) -> None:
     doc = await stamped(1)
     await doc.configure(Out.NOT_CANCELLABLE)
     assert await doc.cancel() == A.NOT_CANCELLABLE
-    assert await doc.status() == status('valid', 'not_cancellable', 'none')
     assert await doc.cancel() == A.NOT_CANCELLABLE
     await doc.configure(Out.ACCEPTED)
     assert await doc.cancel() == A.NOT_CANCELLABLE
-    assert await doc.status() == status('valid', 'not_cancellable', 'none')
     await doc.configure(Out.TIMEOUT)
     with pytest.raises(PacTimeout):
         await doc.cancel()
-    assert await doc.status() == status('valid', 'not_cancellable', 'none')
+    assert await doc.cancel() == A.NOT_CANCELLABLE
 
 
 async def test_configured_answers_override_the_24_hour_rule(stamped: Any) -> None:
@@ -210,7 +171,6 @@ async def test_configured_answers_override_the_24_hour_rule(stamped: Any) -> Non
     recent = await stamped(1)
     await recent.configure(Out.PENDING)
     assert await recent.cancel() == A.PENDING
-    assert await recent.status() == status('valid', 'with_acceptance', 'pending')
 
 
 async def test_a_timeout_leaves_it_pending(stamped: Any) -> None:
@@ -218,7 +178,7 @@ async def test_a_timeout_leaves_it_pending(stamped: Any) -> None:
     await doc.configure(Out.TIMEOUT)
     with pytest.raises(PacTimeout):
         await doc.cancel()
-    assert await doc.status() == status('valid', 'with_acceptance', 'pending')
+    assert await doc.cancel() == A.PENDING
 
 
 async def test_once_pending_it_needs_acceptance_from_then_on(stamped: Any) -> None:
@@ -234,13 +194,12 @@ async def test_configured_outcomes_on_a_pending_document(stamped: Any) -> None:
     await doc.cancel()
     await doc.configure(Out.ACCEPTED)
     assert await doc.cancel() == A.PENDING
-    assert await doc.status() == status('valid', 'with_acceptance', 'pending')
     await doc.receiver(ReceiverAnswer.REJECT)
     assert await doc.cancel() == A.PENDING
     await doc.configure(Out.TIMEOUT)
     with pytest.raises(PacTimeout):
         await doc.cancel()
-    assert await doc.status() == status('valid', 'with_acceptance', 'pending')
+    assert await doc.cancel() == A.PENDING
 
 
 async def test_configured_outcomes_on_a_cancelled_document(stamped: Any) -> None:
@@ -251,7 +210,7 @@ async def test_configured_outcomes_on_a_cancelled_document(stamped: Any) -> None
     await doc.configure(Out.TIMEOUT)
     with pytest.raises(PacTimeout):
         await doc.cancel()
-    assert await doc.status() == status('cancelled', 'without_acceptance', 'accepted')
+    assert await doc.cancel() == A.ACCEPTED
 
 
 @pytest.mark.parametrize(
@@ -264,7 +223,6 @@ async def test_rejected(stamped: Any, options: dict[str, str], expected: tuple[s
     with pytest.raises(PacRejected) as caught:
         await doc.cancel()
     assert (caught.value.code, caught.value.message) == expected
-    assert await doc.status() == status('valid', 'without_acceptance', 'none')
     assert await doc.cancel() == A.ACCEPTED
 
 
@@ -273,13 +231,10 @@ async def test_unavailable(stamped: Any) -> None:
     await doc.configure(Out.UNAVAILABLE)
     with pytest.raises(PacUnavailable):
         await doc.cancel()
-    assert await doc.status() == status('valid', 'without_acceptance', 'none')
     assert await doc.cancel() == A.ACCEPTED
 
 
 async def test_a_uuid_never_stamped(pac: SimulatedPac, credentials: CsdCredentials) -> None:
-    query = await pac.query_status('AAA010101AAA', 'XAXX010101000', NEVER_STAMPED, Decimal('1'))
-    assert query == status('valid', 'with_acceptance', 'none')
     request = CancellationRequest(
         issuer_rfc='AAA010101AAA',
         recipient_rfc='XAXX010101000',
@@ -290,33 +245,25 @@ async def test_a_uuid_never_stamped(pac: SimulatedPac, credentials: CsdCredentia
     )
     assert await pac.request_cancellation(request) == A.PENDING
     await pac.answer_as_receiver(NEVER_STAMPED, ReceiverAnswer.ACCEPT)
-    assert await pac.query_status('X', 'Y', NEVER_STAMPED, Decimal('9')) == status(
-        'cancelled', 'with_acceptance', 'accepted'
-    )
+    assert await pac.request_cancellation(request) == A.ACCEPTED
 
 
 async def test_mismatches(stamped: Any) -> None:
     doc = await stamped(1)
-    not_found = status('not_found', 'not_cancellable', 'none')
-    assert await doc.status(issuer_rfc='AAA010101AAA') == not_found
-    assert await doc.status(recipient_rfc='AAA010101AAA') == not_found
-    assert await doc.status(total=doc.total + 1) == not_found
-    assert await doc.status(total=Decimal('116.0')) == status('valid', 'without_acceptance', 'none')
-    with pytest.raises(PacRejected) as caught:
-        await doc.cancel(total=doc.total + 1)
-    assert caught.value.code == '205'
+    for changes in (
+        {'issuer_rfc': 'AAA010101AAA'},
+        {'recipient_rfc': 'AAA010101AAA'},
+        {'total': doc.total + 1},
+    ):
+        with pytest.raises(PacRejected) as caught:
+            await doc.cancel(**changes)
+        assert caught.value.code == '205'
     await doc.configure(Out.TIMEOUT)
     with pytest.raises(PacRejected) as caught:
         await doc.cancel(recipient_rfc='AAA010101AAA')
     assert caught.value.code == '205'
     with pytest.raises(PacTimeout):
         await doc.cancel()
-
-
-async def test_a_malformed_uuid_is_not_found(pac: SimulatedPac) -> None:
-    assert await pac.query_status('A', 'B', 'nope', Decimal('1')) == status(
-        'not_found', 'not_cancellable', 'none'
-    )
 
 
 async def test_a_timeout_stamped_document_has_its_record(stamped: Any) -> None:
@@ -327,11 +274,19 @@ async def test_a_timeout_stamped_document_has_its_record(stamped: Any) -> None:
     assert await doc.cancel() == A.ACCEPTED
 
 
-async def test_configuring_a_uuid_never_stamped(pac: SimulatedPac) -> None:
-    await pac.configure_cancellation(NEVER_STAMPED, Out.PENDING)
-    assert await pac.query_status('X', 'Y', NEVER_STAMPED, Decimal('3')) == status(
-        'valid', 'with_acceptance', 'none'
+async def test_configuring_a_uuid_never_stamped(
+    pac: SimulatedPac, credentials: CsdCredentials
+) -> None:
+    await pac.configure_cancellation(NEVER_STAMPED, Out.ACCEPTED)
+    request = CancellationRequest(
+        issuer_rfc='X',
+        recipient_rfc='Y',
+        uuid=NEVER_STAMPED,
+        total=Decimal('3'),
+        reason='02',
+        csd=credentials,
     )
+    assert await pac.request_cancellation(request) == A.ACCEPTED
 
 
 async def test_not_cancellable_on_a_uuid_never_stamped(
@@ -347,16 +302,13 @@ async def test_not_cancellable_on_a_uuid_never_stamped(
         csd=credentials,
     )
     assert await pac.request_cancellation(request) == A.NOT_CANCELLABLE
-    assert await pac.query_status('X', 'Y', NEVER_STAMPED, Decimal('3')) == status(
-        'valid', 'not_cancellable', 'none'
-    )
+    assert await pac.request_cancellation(request) == A.NOT_CANCELLABLE
 
 
 async def test_configuring_by_uuid(stamped: Any) -> None:
     doc = await stamped(1)
     await doc.pac.configure_cancellation(doc.uuid.lower(), Out.PENDING)
     await doc.pac.configure_cancellation('not-a-uuid', Out.UNAVAILABLE)
-    await doc.status()
     assert await doc.cancel() == A.PENDING
 
 
@@ -366,12 +318,11 @@ async def test_not_cancellable_after_a_rejection_keeps_the_status(stamped: Any) 
     await doc.receiver(ReceiverAnswer.REJECT)
     await doc.configure(Out.NOT_CANCELLABLE)
     assert await doc.cancel() == A.NOT_CANCELLABLE
-    assert await doc.status() == status('valid', 'not_cancellable', 'rejected')
+    assert await doc.cancel() == A.NOT_CANCELLABLE
 
 
 async def test_a_lower_case_uuid_finds_the_stamp(stamped: Any) -> None:
     doc = await stamped(1)
-    assert await doc.status(uuid=doc.uuid.lower()) == status('valid', 'without_acceptance', 'none')
     assert await doc.cancel(uuid=doc.uuid.lower()) == A.ACCEPTED
 
 

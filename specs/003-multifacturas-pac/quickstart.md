@@ -43,7 +43,8 @@ stamp = await pac.stamp(sealed)
 Expected, offline from the recorded answer and opt-in live:
 - `stamp.timbre.UUID` is in upper case;
 - `stamp.timbre.SelloCFD` equals the document's `Sello`;
-- `timbre(read(stamp.xml)) == stamp.timbre`;
+- `timbre(read(stamp.xml))` equals `stamp.timbre` except that the PAC writes the UUID in lower
+  case in the XML, which the stamp upper-cases;
 - `await pac.stamp(sealed)` again returns the same UUID;
 - `await pac.find_stamp(sealed)` is `None`.
 
@@ -59,16 +60,14 @@ Expected, offline from the recorded answer and opt-in live:
 | a SOAP Fault (with HTTP 500 or 200) | `PacRejected('SOAP-FAULT', …)` |
 | `MultifacturasSettings(base_url='http://…')` | `ValueError` |
 
-## Scenario 3 (P2): cancel and query
+## Scenario 3 (P2): cancel
 
 | Recorded answers | Result |
 |------------------|--------|
-| `cancelarCfdi` `0` + SAT `201`, then SAT status `Cancelado` | `ACCEPTED` |
-| `0` + `201`, then status `Vigente` / `En proceso` | `PENDING` |
-| `0` + `201`, then status `Vigente` / `No cancelable` | `NOT_CANCELLABLE` |
+| `cancelarCfdi` `0` + SAT `201` (synthetic) | `PENDING` |
+| `0` + SAT `202` (synthetic) | `ACCEPTED` |
 | `0` + SAT `205 No Existe` (recorded in test mode) | `PacRejected('205', 'No Existe')` |
 | `10` / `CACFDI33 - Problemas con los campos.` (recorded) | `PacRejected('CACFDI33', …)` |
-| SAT `Consulta` answers (recorded, scrubbed) | mapped as in data-model §6 |
 
 The request sent to the PAC carries `b64Cer`, `b64Key` and the CSD password, and no other CSD
 data. No error's `str` or `repr` contains them.

@@ -45,8 +45,8 @@ testing of each story.
 
 **Purpose**: scrubbed recorded answers to test against
 
-- [ ] T001 Write `tests/pac/test_multifacturas_fixtures.py` (failing: the folder does not exist yet): every file listed in `tests/fixtures/multifacturas/README.md` exists. No fixture holds a real credential: every `rfc`, `clave`, `usuario`, `pass` or `pwd` value is `USER` or `PASSWORD`. The only RFCs that appear, including inside Base64-decoded `cfdi` and `acuse` values, are `EKU9003173C9`, `URE180429TM6`, `XAXX010101000` and `AAA010101AAA`. `png`, `mensaje_original`, `mensaje_original_pac_json` and `messageDetail` are empty or absent. No fixture contains the original-string marker `||4.0|`. Supports FR-014, FR-015, SC-004
-- [ ] T002 Write the dev-only `tools/record_multifacturas.py` and run it once against the PAC's test mode with `MULTIFACTURAS_USER`/`MULTIFACTURAS_PASSWORD` set to the PAC's published demo credentials (research.md R10).
+- [X] T001 Write `tests/pac/test_multifacturas_fixtures.py` (failing: the folder does not exist yet): every file listed in `tests/fixtures/multifacturas/README.md` exists. No fixture holds a real credential: every `rfc`, `clave`, `usuario`, `pass` or `pwd` value is `USER` or `PASSWORD`. The only RFCs that appear, including inside Base64-decoded `cfdi` and `acuse` values, are `EKU9003173C9`, `URE180429TM6`, `XAXX010101000` and `AAA010101AAA`. `png`, `mensaje_original` and `mensaje_original_pac_json` are empty or absent. No fixture, nor any Base64 document in one, contains an original string (`||`); `messageDetail` inside `codigo_mf_texto` is kept so the client's tests can prove it is dropped. Supports FR-014, FR-015, SC-004
+- [X] T002 Write the dev-only `tools/record_multifacturas.py` and run it once against the PAC's test mode with `MULTIFACTURAS_USER`/`MULTIFACTURAS_PASSWORD` set to the PAC's published demo credentials (research.md R10).
   - **Requests** (`produccion=NO`, research R3/R6/R8): it seals a fresh test invoice with `tests/fixtures/csd/` and the current Mexico City time minus 1 hour, then records:
     - `timbrar33b64` ok;
     - the same document again (duplicate);
@@ -72,9 +72,9 @@ testing of each story.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 [P] Write `tests/pac/test_input.py` (failing: `mictlanix.cfdi.pac._input` does not exist): `check(sealed_xml)` raises `PacRejected` `301` for non-bytes, non-XML, non-CFDI 4.0, unreadable or `Total`-less input, and `302` for a missing or blank `Sello`, each `from None`; it returns the root, seal and `Comprobante` of a sealed document; `key` is `seal:` plus the SHA-256 hex of the seal (FR-013, FR-014)
-- [ ] T004 Move `_reject`, `_Sealed` and `_check` from `src/mictlanix/cfdi/pac/simulated.py` to `src/mictlanix/cfdi/pac/_input.py` (public-within-package names `reject`, `Sealed`, `check`); `simulated.py` imports them; all `tests/pac/test_simulated_*.py` pass unchanged; make T003 pass
-- [ ] T005 [P] Write `tests/pac/test_soap.py` (failing) for `src/mictlanix/cfdi/pac/_soap.py`:
+- [X] T003 [P] Write `tests/pac/test_input.py` (failing: `mictlanix.cfdi.pac._input` does not exist): `check(sealed_xml)` raises `PacRejected` `301` for non-bytes, non-XML, non-CFDI 4.0, unreadable or `Total`-less input, and `302` for a missing or blank `Sello`, each `from None`; it returns the root, seal and `Comprobante` of a sealed document; `key` is `seal:` plus the SHA-256 hex of the seal (FR-013, FR-014)
+- [X] T004 Move `_reject`, `_Sealed` and `_check` from `src/mictlanix/cfdi/pac/simulated.py` to `src/mictlanix/cfdi/pac/_input.py` (public-within-package names `reject`, `Sealed`, `check`); `simulated.py` imports them; all `tests/pac/test_simulated_*.py` pass unchanged; make T003 pass
+- [X] T005 [P] Write `tests/pac/test_soap.py` (failing) for `src/mictlanix/cfdi/pac/_soap.py`:
   - **Envelope**: `envelope(operation, params)` builds a SOAP 1.1 RPC/encoded envelope in namespace `urn:wservicewsdl` with `xsi:type="xsd:string"` parameters. Values are XML-escaped (`<`, `&`, quotes). A `dict` parameter is a struct (`<datos xsi:type="tns:datos">…</datos>`). The `SOAPAction` is `"urn:wservicewsdl#<operation>"`.
   - **Return fields**: `fields(answer)` gives the leaf elements of the return as a `dict` of strings.
   - **Error text** (data-model.md §3), checked on the recorded `301`, `CFDI40102` and `CACFDI33` answers:
@@ -90,15 +90,15 @@ testing of each story.
     - a 200 HTML body → `PacTimeout` from `call`;
     - all raised `from None`.
   - **TLS**: the connection uses `ssl.create_default_context()` (`check_hostname` true, `CERT_REQUIRED`) and the settings' connect and read timeouts. (FR-003, FR-012, FR-013, FR-014, SC-006)
-- [ ] T006 Implement `src/mictlanix/cfdi/pac/_soap.py` per research.md R2 and data-model.md §2–§3, with `_post` as the single seam the tests replace and `call` on top of it; make T005 pass
-- [ ] T007 [P] Write `tests/pac/test_sat_status.py` (failing) for `src/mictlanix/cfdi/pac/_sat_status.py` `query(settings, issuer_rfc, recipient_rfc, uuid, total)`:
+- [X] T006 Implement `src/mictlanix/cfdi/pac/_soap.py` per research.md R2 and data-model.md §2–§3, with `_post` as the single seam the tests replace and `call` on top of it; make T005 pass
+- [X] T007 [P] Write `tests/pac/test_sat_status.py` (failing) for `src/mictlanix/cfdi/pac/_sat_status.py` `query(settings, issuer_rfc, recipient_rfc, uuid, total)`:
   - **Request**: it posts `Consulta` to `settings.sat_url` with SOAPAction `http://tempuri.org/IConsultaCFDIService/Consulta` and the expression `?re=…&rr=…&tt=…&id=…`. `tt` comes from `mictlanix.cfdi._read._qr_total` (`Decimal('642.20')` → `642.2`), the expression is XML-escaped, and there is no `fe`.
   - **Mapping**: each recorded and synthetic `Consulta` fixture maps per data-model.md §6. An unknown value raises `PacRejected('SAT-ANSWER', …)`.
   - **Malformed UUID**: returns `not_found / not_cancellable / none` without calling `_post`. (FR-010)
-- [ ] T008 Implement `src/mictlanix/cfdi/pac/_sat_status.py` per research.md R7; make T007 pass
-- [ ] T009 [P] Write `tests/pac/test_multifacturas_settings.py` (failing): `MultifacturasSettings` is frozen and keyword-only with the defaults of data-model.md §1 ("`base_url` | `'https://ws.multifacturas.com'` | MUST start with `https://`", "`connect_timeout` | `10.0`", "`read_timeout` | `60.0`", both "> 0"); `http://` base or SAT URLs and timeouts ≤ 0 raise `ValueError` naming the field; `repr` shows `password=<hidden>` and not the password (FR-002, FR-003, FR-004)
-- [ ] T010 Implement `MultifacturasSettings` in `src/mictlanix/cfdi/pac/multifacturas.py` and export it from `src/mictlanix/cfdi/pac/__init__.py`; make T009 pass
-- [ ] T011 Update `tests/pac/test_public_api.py` so the expected exports are the union of the `## Exports` blocks of `specs/002-pac-interface-simulator/contracts/public-api.md` and `specs/003-multifacturas-pac/contracts/public-api.md` (failing until T014: `MultifacturasPac` is not exported yet); the import check still allows only the standard library, `lxml` and `mictlanix.cfdi`; add a `replay` fixture to `tests/pac/conftest.py` that monkeypatches `mictlanix.cfdi.pac._soap._post`, answers each call from a queue of fixture files (or raises a given exception) and records the URL, the SOAPAction and the parameters parsed from the envelope sent, so `call`'s envelope building and parsing still run
+- [X] T008 Implement `src/mictlanix/cfdi/pac/_sat_status.py` per research.md R7; make T007 pass
+- [X] T009 [P] Write `tests/pac/test_multifacturas_settings.py` (failing): `MultifacturasSettings` is frozen and keyword-only with the defaults of data-model.md §1 ("`base_url` | `'https://ws.multifacturas.com'` | MUST start with `https://`", "`connect_timeout` | `10.0`", "`read_timeout` | `60.0`", both "> 0"); `http://` base or SAT URLs and timeouts ≤ 0 raise `ValueError` naming the field; `repr` shows `password=<hidden>` and not the password (FR-002, FR-003, FR-004)
+- [X] T010 Implement `MultifacturasSettings` in `src/mictlanix/cfdi/pac/multifacturas.py` and export it from `src/mictlanix/cfdi/pac/__init__.py`; make T009 pass
+- [X] T011 Update `tests/pac/test_public_api.py` so the expected exports are the union of the `## Exports` blocks of `specs/002-pac-interface-simulator/contracts/public-api.md` and `specs/003-multifacturas-pac/contracts/public-api.md` (failing until T014: `MultifacturasPac` is not exported yet); the import check still allows only the standard library, `lxml` and `mictlanix.cfdi`; add a `replay` fixture to `tests/pac/conftest.py` that monkeypatches `mictlanix.cfdi.pac._soap._post`, answers each call from a queue of fixture files (or raises a given exception) and records the URL, the SOAPAction and the parameters parsed from the envelope sent, so `call`'s envelope building and parsing still run
 
 **Checkpoint**: transport, SAT status and settings exist and are tested
 
@@ -110,7 +110,7 @@ testing of each story.
 
 **Independent Test**: quickstart.md scenarios 1 and 2
 
-- [ ] T012 [US1] Write `tests/pac/test_multifacturas_stamp.py` (failing), every test with `MultifacturasPac(MultifacturasSettings(user='USER', password='PASSWORD', production=…))` and the `replay` fixture:
+- [X] T012 [US1] Write `tests/pac/test_multifacturas_stamp.py` (failing), every test with `MultifacturasPac(MultifacturasSettings(user='USER', password='PASSWORD', production=…))` and the `replay` fixture:
   - **Request**: `stamp` sends `timbrar33b64` to `<base_url>/pac/index.php` with `rfc=USER`, `clave=PASSWORD`, `xml`= Base64 of the input, and `produccion` `SI`/`NO` according to `production`.
   - **Success**: the recorded ok answer gives a `Stamp` whose UUID is in upper case, whose `SelloCFD` is the input's `Sello`, and with `timbre(read(stamp.xml)) == stamp.timbre`. The recorded duplicate answer gives the same UUID.
   - **307**:
@@ -126,8 +126,8 @@ testing of each story.
   - **`find_stamp`**: returns `None` with no `_post` call, and rejects bad input the same way.
   - **Transport**: `PacUnavailable` and `PacTimeout` from the seam reach the caller unchanged.
   - **Secrets**: no error's `str`/`repr` contains `PASSWORD` or the input XML. (FR-001, FR-005, FR-006, FR-007, FR-012, FR-014, SC-002, SC-003)
-- [ ] T013 [US1] Implement `MultifacturasPac.__init__`, `stamp` and `find_stamp` in `src/mictlanix/cfdi/pac/multifacturas.py` per data-model.md §4 (reusing `_input.check` and `_interface.stamp_of`); make T012 pass
-- [ ] T014 [US1] Export `MultifacturasPac` from `src/mictlanix/cfdi/pac/__init__.py`; make `tests/pac/test_public_api.py` (T011) pass
+- [X] T013 [US1] Implement `MultifacturasPac.__init__`, `stamp` and `find_stamp` in `src/mictlanix/cfdi/pac/multifacturas.py` per data-model.md §4 (reusing `_input.check` and `_interface.stamp_of`); make T012 pass
+- [X] T014 [US1] Export `MultifacturasPac` from `src/mictlanix/cfdi/pac/__init__.py`; make `tests/pac/test_public_api.py` (T011) pass
 
 **Checkpoint**: a caller can stamp through Multifacturas and resolve a timeout without a second stamp
 
@@ -139,7 +139,7 @@ testing of each story.
 
 **Independent Test**: quickstart.md scenario 3
 
-- [ ] T015 [US2] Write `tests/pac/test_multifacturas_cancel.py` (failing), using the `replay` fixture and the `credentials` fixture (the SAT test CSD):
+- [X] T015 [US2] Write `tests/pac/test_multifacturas_cancel.py` (failing), using the `replay` fixture and the `credentials` fixture (the SAT test CSD):
   - **Request**: `request_cancellation` sends `cancelarCfdi` to `<base_url>/cancelacion2022/index.php` with the struct `datos`:
     - `usuario=USER`, `pass=PASSWORD`, `accion=cancelar`, `produccion` `SI`/`NO`;
     - `uuid` in upper case, `rfc` = the issuer RFC;
@@ -158,7 +158,7 @@ testing of each story.
     - recorded `CACFDI33` → `PacRejected('CACFDI33', 'Problemas con los campos.')`.
   - **`query_status`**: delegates to `_sat_status.query` with `settings.sat_url` and returns its `SatStatus`.
   - **Secrets**: no error's `str`/`repr` contains the CSD password, `PASSWORD`, or the certificate or key (raw or Base64). (FR-001, FR-008, FR-009, FR-010, FR-012, FR-014)
-- [ ] T016 [US2] Implement `request_cancellation` and `query_status` in `src/mictlanix/cfdi/pac/multifacturas.py` per research.md R6–R7, and add the private `_conforms(pac: MultifacturasPac) -> PacClient` so `mypy src` checks SC-001; make T015 pass
+- [X] T016 [US2] Implement `request_cancellation` and `query_status` in `src/mictlanix/cfdi/pac/multifacturas.py` per research.md R6–R7, and add the private `_conforms(pac: MultifacturasPac) -> PacClient` so `mypy src` checks SC-001; make T015 pass
 
 **Checkpoint**: every cancellation answer and SAT status maps as specified
 
@@ -170,8 +170,8 @@ testing of each story.
 
 **Independent Test**: quickstart.md scenario 4
 
-- [ ] T017 [US3] Write `tests/pac/test_multifacturas_balance.py` (failing): `balance()` sends `saldo` with `rfc=USER`, `clave=PASSWORD` and returns `20` from the recorded answer; `saldo_error.xml` → `PacRejected` with the code and message of data-model.md §3; a non-integer `saldo` → `PacRejected('MF-ANSWER', …)`; transport errors pass through (FR-011, FR-012)
-- [ ] T018 [US3] Implement `balance` in `src/mictlanix/cfdi/pac/multifacturas.py` per research.md R8; make T017 pass
+- [X] T017 [US3] Write `tests/pac/test_multifacturas_balance.py` (failing): `balance()` sends `saldo` with `rfc=USER`, `clave=PASSWORD` and returns `20` from the recorded answer; `saldo_error.xml` → `PacRejected` with the code and message of data-model.md §3; a non-integer `saldo` → `PacRejected('MF-ANSWER', …)`; transport errors pass through (FR-011, FR-012)
+- [X] T018 [US3] Implement `balance` in `src/mictlanix/cfdi/pac/multifacturas.py` per research.md R8; make T017 pass
 
 **Checkpoint**: all three stories work independently
 
@@ -179,15 +179,15 @@ testing of each story.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T019 Write `tests/pac/test_multifacturas_live.py`, marked `pytest.mark.skipif` unless both `MULTIFACTURAS_USER` and `MULTIFACTURAS_PASSWORD` are set (constitution II, FR-016). Against `production=False`:
+- [X] T019 Write `tests/pac/test_multifacturas_live.py`, marked `pytest.mark.skipif` unless both `MULTIFACTURAS_USER` and `MULTIFACTURAS_PASSWORD` are set (constitution II, FR-016). Against `production=False`:
   - stamp a fresh sealed test invoice: valid stamp, and stamping it again gives the same UUID (SC-003);
   - `find_stamp` is `None`;
   - `balance()` is an `int`;
   - `request_cancellation` of that stamp raises `PacRejected` with code `205` (test stamps never reach the SAT);
   - `query_status` of it is `not_found`.
   Running it with the demo credentials passes, and without them it is skipped.
-- [ ] T020 [P] Add a "Multifacturas" subsection to the "Stamping and cancelling" section of `README.md` (creating the client from `MultifacturasSettings`, `production=False` for test mode, `balance()`, `find_stamp` returning `None` and why) and the client to `CHANGELOG.md` `Unreleased`
-- [ ] T021 Run quickstart.md end to end (`uv run pytest -q`, `uv run ruff check`, `uv run ruff format --check`, `uv run mypy src`, `uv build`); every test passes, the live tests are skipped without the variables, and `tests/test_no_secrets.py` and `tests/test_offline.py` still pass (SC-002, SC-004, SC-005, SC-006)
+- [X] T020 [P] Add a "Multifacturas" subsection to the "Stamping and cancelling" section of `README.md` (creating the client from `MultifacturasSettings`, `production=False` for test mode, `balance()`, `find_stamp` returning `None` and why) and the client to `CHANGELOG.md` `Unreleased`
+- [X] T021 Run quickstart.md end to end (`uv run pytest -q`, `uv run ruff check`, `uv run ruff format --check`, `uv run mypy src`, `uv build`); every test passes, the live tests are skipped without the variables, and `tests/test_no_secrets.py` and `tests/test_offline.py` still pass (SC-002, SC-004, SC-005, SC-006)
 
 ---
 
@@ -236,3 +236,17 @@ adds tests first and leaves every gate green.
 - Do not commit per task: one docs commit before implementation, one code commit after.
 - The PAC's demo credentials are used only through `MULTIFACTURAS_USER`/`MULTIFACTURAS_PASSWORD`
   when recording and running the live tests; they are never written to the repository.
+
+## Phase 7: Convergence
+
+- [X] T022 Map the connect-phase `ValueError` (a non-numeric port in `base_url`/`sat_url`, raised by `urlsplit(...).port`) and `UnicodeError` (a host that IDNA cannot encode, raised by `connect()`) to `PacUnavailable` `from None` in `_post` of `src/mictlanix/cfdi/pac/_soap.py`, with a case each in `tests/pac/test_soap.py` (e.g. `https://ws.example.test:abc`, `https://éxample..test`), so no other error type escapes an operation per FR-013 (partial)
+
+## Phase 8: The SAT status leaves the PAC interface (user decision, 2026-11-18)
+
+The SAT's status service does not depend on the PAC, so it moves out of this client and out of
+`PacClient`; mictlanix/cfdi#6 tracks a PAC-independent client and carries the query's mapping.
+This supersedes FR-010 and the SAT status parts of T007, T008, T015, T016, T019 and T022.
+
+- [X] T023 Remove `query_status` and `SatStatus` from `PacClient` in `src/mictlanix/cfdi/pac/_interface.py`, and `SatStatus`, `SatState`, `Cancellability`, `CancellationStatus` from the exports in `src/mictlanix/cfdi/pac/__init__.py`; keep the simulator's state as private enums in `src/mictlanix/cfdi/pac/simulated.py` and drop its `query_status`; amend spec 002's contract, spec and data model with a note (FR-010 removed)
+- [X] T024 Remove `_sat_status.py`, `MultifacturasSettings.sat_url` and `MultifacturasPac.query_status`; answer a cancellation from the SAT code alone (`201` → `PENDING`, `202` → `ACCEPTED`, any other → `PacRejected`) in `src/mictlanix/cfdi/pac/multifacturas.py` per FR-009 as amended
+- [X] T025 Remove `tests/pac/test_sat_status.py`, the `consulta_*` fixtures and their recording in `tools/record_multifacturas.py`; rewrite the simulator's cancellation and store tests to follow outcomes through `request_cancellation`; update the Multifacturas cancellation, settings, values and live tests; update README, CHANGELOG and spec 003's docs

@@ -29,14 +29,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.0, PFIC 1.0, Instituciones Educativas Privadas 1.0, Venta de Vehículos 1.1 and Hidrocarburos
   y Petrolíferos 1.0.
 - `mictlanix.cfdi.pac`: one asynchronous PAC interface, `PacClient` (stamp, find a stamp,
-  request a cancellation, query the SAT status), with immutable values (`Stamp`,
-  `CancellationRequest`, `CsdCredentials`, `SatStatus`) and typed errors (`PacRejected`,
-  `PacUnavailable`, `PacTimeout`, under `PacError`). Cancellation requests are validated on
+  request a cancellation), with immutable values (`Stamp`, `CancellationRequest`,
+  `CsdCredentials`) and typed errors (`PacRejected`, `PacUnavailable`, `PacTimeout`, under
+  `PacError`). Cancellation requests are validated on
   construction (reason 01 requires the substitute UUID, 02–04 forbid it).
 - `SimulatedPac`, an offline PAC for development and tests: every stamping and cancellation
   outcome configurable per document or UUID, the recipient's answers, and state in a
   caller-supplied store (`SimulatorStore`, `InMemoryStore` by default) that several processes
   can share.
+- `MultifacturasPac`, the PAC client for Facturación México (Multifacturas), configured with
+  `MultifacturasSettings`: stamping (`timbrar33b64`, a duplicate returns the existing stamp),
+  cancellation (`cancelacion2022`; the SAT's code gives pending or accepted), and `balance()`. HTTPS with certificate verification only;
+  nothing is read from the environment. Offline tests replay scrubbed recordings of the PAC's
+  test mode; live tests are opt-in through `MULTIFACTURAS_USER` and `MULTIFACTURAS_PASSWORD`.
+- Constitution v1.1.0: a timeout may also be resolved by resubmitting the same sealed document
+  to a PAC that answers a resubmission with the existing stamp.
 
 ### Changed
 

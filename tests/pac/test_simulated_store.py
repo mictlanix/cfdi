@@ -16,7 +16,6 @@ from mictlanix.cfdi.pac import (
     PacTimeout,
     PacUnavailable,
     ReceiverAnswer,
-    SatState,
     SimulatedPac,
     StampOutcome,
 )
@@ -117,10 +116,7 @@ async def test_cancellations_are_shared(
     assert await b.request_cancellation(request) == CancellationAnswer.PENDING
     await b.answer_as_receiver(request.uuid, ReceiverAnswer.ACCEPT)
     for pac in (a, b):
-        query = await pac.query_status(
-            request.issuer_rfc, request.recipient_rfc, request.uuid, request.total
-        )
-        assert query.state == SatState.CANCELLED
+        assert await pac.request_cancellation(request) == CancellationAnswer.ACCEPTED
 
 
 async def test_simulators_without_a_store_share_nothing(
@@ -182,7 +178,6 @@ async def test_a_store_that_cannot_read_makes_every_operation_unavailable(
         pac.stamp(sealed),
         pac.find_stamp(sealed),
         pac.request_cancellation(_request_for(credentials)),
-        pac.query_status('A', 'B', UUID, Decimal('1')),
         pac.configure_stamp(sealed, StampOutcome.STAMPED),
         pac.configure_cancellation(UUID, CancellationOutcome.ACCEPTED),
         pac.answer_as_receiver(UUID, ReceiverAnswer.ACCEPT),
@@ -245,7 +240,6 @@ async def test_a_store_returning_garbage_makes_every_operation_unavailable(
         pac.stamp(sealed),
         pac.find_stamp(sealed),
         pac.request_cancellation(_request_for(credentials)),
-        pac.query_status('A', 'B', UUID, Decimal('1')),
         pac.configure_stamp(sealed, StampOutcome.STAMPED),
         pac.configure_cancellation(UUID, CancellationOutcome.ACCEPTED),
         pac.answer_as_receiver(UUID, ReceiverAnswer.ACCEPT),

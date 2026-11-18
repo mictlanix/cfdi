@@ -24,27 +24,6 @@ class CancellationAnswer(StrEnum):
     NOT_CANCELLABLE = 'not_cancellable'
 
 
-class SatState(StrEnum):
-    VALID = 'valid'
-    CANCELLED = 'cancelled'
-    NOT_FOUND = 'not_found'
-
-
-class Cancellability(StrEnum):
-    WITHOUT_ACCEPTANCE = 'without_acceptance'
-    WITH_ACCEPTANCE = 'with_acceptance'
-    NOT_CANCELLABLE = 'not_cancellable'
-
-
-class CancellationStatus(StrEnum):
-    NONE = 'none'
-    REQUESTED = 'requested'
-    PENDING = 'pending'
-    ACCEPTED = 'accepted'
-    REJECTED = 'rejected'
-    EXPIRED = 'expired'
-
-
 @dataclass(frozen=True, kw_only=True)
 class Stamp:
     """A stamped document and its TimbreFiscalDigital 1.1; the UUID is upper case."""
@@ -119,15 +98,6 @@ class CancellationRequest:
             )
 
 
-@dataclass(frozen=True, kw_only=True)
-class SatStatus:
-    """The SAT's status of one UUID."""
-
-    state: SatState
-    cancellability: Cancellability
-    cancellation: CancellationStatus
-
-
 class PacClient(Protocol):
     """The operations every PAC client offers. Each raises only ``PacError`` subclasses."""
 
@@ -141,12 +111,6 @@ class PacClient(Protocol):
 
     async def request_cancellation(self, request: CancellationRequest) -> CancellationAnswer:
         """Ask the SAT, through the PAC, to cancel the UUID."""
-        ...
-
-    async def query_status(
-        self, issuer_rfc: str, recipient_rfc: str, uuid: str, total: Decimal
-    ) -> SatStatus:
-        """The SAT's current status of the UUID."""
         ...
 
 

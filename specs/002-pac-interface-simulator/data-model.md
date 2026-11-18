@@ -4,6 +4,12 @@ All values are frozen, keyword-only dataclasses or `StrEnum`s. Datetimes are nai
 time, as everywhere in the library. Decisions are in [research.md](research.md); the exact
 exports are in [contracts/public-api.md](contracts/public-api.md).
 
+> **Amended by feature 003 (mictlanix/cfdi#3), 2026-11-18:** `query_status` and its values
+> (`SatStatus`, `SatState`, `Cancellability`, `CancellationStatus`) were removed from `PacClient`
+> and `SimulatedPac`. The SAT's status service does not depend on the PAC; a PAC-independent
+> client for it is tracked in mictlanix/cfdi#6. The requirements below that concern the SAT
+> status are superseded; the simulator still keeps that state to decide its answers.
+
 ## 1. Interface values
 
 | Entity | Fields | Rules |

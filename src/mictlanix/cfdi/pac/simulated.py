@@ -5,33 +5,25 @@ from __future__ import annotations
 import asyncio
 import base64
 import functools
-import hashlib
 import json
-import re
 import secrets
 import uuid
 from collections.abc import Callable, Coroutine
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Concatenate, NoReturn, Protocol
+from typing import Any, Concatenate, Protocol
 
 from lxml import etree
 
 from mictlanix.cfdi import _mexico, tfd11
-from mictlanix.cfdi._errors import CfdiError
-from mictlanix.cfdi._read import read
-from mictlanix.cfdi._xml import CFDI40, XSI, parse_document, serialize
-from mictlanix.cfdi.cfdi40 import Comprobante
+from mictlanix.cfdi._xml import CFDI40, XSI, serialize
 from mictlanix.cfdi.pac._errors import PacRejected, PacTimeout, PacUnavailable
+from mictlanix.cfdi.pac._input import Sealed, check, reject
 from mictlanix.cfdi.pac._interface import (
-    Cancellability,
     CancellationAnswer,
     CancellationRequest,
-    CancellationStatus,
     PacClient,
-    SatState,
-    SatStatus,
     Stamp,
     stamp_of,
 )
@@ -41,12 +33,27 @@ _SAT_CERTIFICATE = '00001000000000000000'
 _DEFAULT_CODE = 'CFDI40999'
 _DEFAULT_MESSAGE = 'Rechazo simulado'
 _WITHOUT_ACCEPTANCE = timedelta(hours=24)
-_UUID = re.compile(r'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}')
-_NOT_FOUND = SatStatus(
-    state=SatState.NOT_FOUND,
-    cancellability=Cancellability.NOT_CANCELLABLE,
-    cancellation=CancellationStatus.NONE,
-)
+
+
+class _SatState(StrEnum):
+    """The simulated SAT's state of a UUID."""
+
+    VALID = 'valid'
+    CANCELLED = 'cancelled'
+
+
+class _Cancellability(StrEnum):
+    WITHOUT_ACCEPTANCE = 'without_acceptance'
+    WITH_ACCEPTANCE = 'with_acceptance'
+    NOT_CANCELLABLE = 'not_cancellable'
+
+
+class _CancellationStatus(StrEnum):
+    NONE = 'none'
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
+    EXPIRED = 'expired'
 
 
 class StampOutcome(StrEnum):
@@ -116,44 +123,6 @@ def _locked[**P, R](
     return run
 
 
-def _reject(code: str, message: str) -> NoReturn:
-    raise PacRejected(code, message) from None
-
-
-class _Sealed:
-    """A sealed document that passed the input checks."""
-
-    def __init__(self, root: etree._Element, seal: str, comprobante: Comprobante) -> None:
-        self.root = root
-        self.seal = seal
-        self.comprobante = comprobante
-        self.key = 'seal:' + hashlib.sha256(seal.encode('utf-8')).hexdigest()
-
-    def has_timbre(self) -> bool:
-        path = f'{{{CFDI40}}}Complemento/{{{tfd11.NAMESPACE}}}TimbreFiscalDigital'
-        return self.root.find(path) is not None
-
-
-def _check(sealed_xml: object) -> _Sealed:
-    """The input checks of research.md R11, steps 1 to 3."""
-    if not isinstance(sealed_xml, bytes):
-        _reject('301', 'the input is not XML bytes')
-    try:
-        root = parse_document(sealed_xml)
-    except CfdiError:
-        _reject('301', 'the input is not a well-formed CFDI 4.0 document')
-    seal = root.get('Sello')
-    if seal is None or not seal.strip():
-        _reject('302', 'the document is not sealed')
-    try:
-        comprobante = read(sealed_xml)
-    except CfdiError:
-        _reject('301', 'the document cannot be read')
-    if comprobante.Total is None:
-        _reject('301', 'the document has no Total')
-    return _Sealed(root, seal, comprobante)
-
-
 class SimulatedPac:
     """A PAC that stamps and cancels offline, for development and tests."""
 
@@ -188,12 +157,12 @@ class SimulatedPac:
         except Exception:
             raise PacUnavailable() from None
 
-    async def _known(self, sealed_xml: object) -> tuple[_Sealed, dict[str, Any]]:
+    async def _known(self, sealed_xml: object) -> tuple[Sealed, dict[str, Any]]:
         """The checked document and its record; ``307`` for a TFD this PAC has no record of."""
-        sealed = _check(sealed_xml)
+        sealed = check(sealed_xml)
         record = await self._get(sealed.key)
         if record.get('stamped_xml') is None and sealed.has_timbre():
-            _reject('307', 'the document carries a stamp this PAC has no record of')
+            reject('307', 'the document carries a stamp this PAC has no record of')
         return sealed, record
 
     @_locked
@@ -223,7 +192,7 @@ class SimulatedPac:
 
     @_locked
     async def find_stamp(self, sealed_xml: bytes) -> Stamp | None:
-        sealed = _check(sealed_xml)
+        sealed = check(sealed_xml)
         stamped = (await self._get(sealed.key)).get('stamped_xml')
         return None if stamped is None else stamp_of(stamped.encode('utf-8'))
 
@@ -241,7 +210,7 @@ class SimulatedPac:
         record.update(next_stamp=StampOutcome(outcome).value, code=code, message=message)
         await self._set(sealed.key, record)
 
-    async def _record_uuid(self, sealed: _Sealed, stamp: Stamp) -> None:
+    async def _record_uuid(self, sealed: Sealed, stamp: Stamp) -> None:
         """The stamped UUID's record, written before the seal's (research.md R11)."""
         comprobante = sealed.comprobante
         await self._set(
@@ -251,21 +220,21 @@ class SimulatedPac:
                 'recipient_rfc': comprobante.Receptor.Rfc,
                 'total': str(comprobante.Total),
                 'stamped_at': stamp.timbre.FechaTimbrado.isoformat(),
-                'state': SatState.VALID.value,
+                'state': _SatState.VALID.value,
                 'cancellability': None,
-                'cancellation': CancellationStatus.NONE.value,
+                'cancellation': _CancellationStatus.NONE.value,
             },
         )
 
-    def _cancellability(self, record: dict[str, Any]) -> Cancellability:
+    def _cancellability(self, record: dict[str, Any]) -> _Cancellability:
         if record.get('cancellability') is not None:
-            return Cancellability(record['cancellability'])
+            return _Cancellability(record['cancellability'])
         stamped_at = record.get('stamped_at')
         if stamped_at is None:
-            return Cancellability.WITH_ACCEPTANCE
+            return _Cancellability.WITH_ACCEPTANCE
         if self._clock() - datetime.fromisoformat(stamped_at) < _WITHOUT_ACCEPTANCE:
-            return Cancellability.WITHOUT_ACCEPTANCE
-        return Cancellability.WITH_ACCEPTANCE
+            return _Cancellability.WITHOUT_ACCEPTANCE
+        return _Cancellability.WITH_ACCEPTANCE
 
     @staticmethod
     def _matches(record: dict[str, Any], issuer: str, recipient: str, total: Decimal) -> bool:
@@ -279,31 +248,16 @@ class SimulatedPac:
         )
 
     @_locked
-    async def query_status(
-        self, issuer_rfc: str, recipient_rfc: str, uuid: str, total: Decimal
-    ) -> SatStatus:
-        if not _UUID.fullmatch(uuid):
-            return _NOT_FOUND
-        record = await self._get('uuid:' + uuid.upper())
-        if not self._matches(record, issuer_rfc, recipient_rfc, total):
-            return _NOT_FOUND
-        return SatStatus(
-            state=SatState(record.get('state', SatState.VALID)),
-            cancellability=self._cancellability(record),
-            cancellation=CancellationStatus(record.get('cancellation', CancellationStatus.NONE)),
-        )
-
-    @_locked
     async def request_cancellation(self, request: CancellationRequest) -> CancellationAnswer:
         key = 'uuid:' + request.uuid.upper()
         record = await self._get(key)
         if not self._matches(record, request.issuer_rfc, request.recipient_rfc, request.total):
-            _reject('205', 'the RFCs or the total do not match the UUID')
+            reject('205', 'the RFCs or the total do not match the UUID')
         outcome = record.pop('next_cancellation', None)
         code = record.pop('code', None) or _DEFAULT_CODE
         message = record.pop('message', None) or _DEFAULT_MESSAGE
-        record.setdefault('state', SatState.VALID.value)
-        record.setdefault('cancellation', CancellationStatus.NONE.value)
+        record.setdefault('state', _SatState.VALID.value)
+        record.setdefault('cancellation', _CancellationStatus.NONE.value)
         answer = self._answer(record, outcome)
         await self._set(key, record)
         if outcome == CancellationOutcome.REJECTED:
@@ -318,9 +272,9 @@ class SimulatedPac:
     def _answer(self, record: dict[str, Any], outcome: str | None) -> CancellationAnswer | None:
         """Apply a request to the record (data-model.md section 5); ``None`` for an error."""
         settled = (
-            record['state'] == SatState.CANCELLED
-            or record['cancellation'] == CancellationStatus.PENDING
-            or record.get('cancellability') == Cancellability.NOT_CANCELLABLE
+            record['state'] == _SatState.CANCELLED
+            or record['cancellation'] == _CancellationStatus.PENDING
+            or record.get('cancellability') == _Cancellability.NOT_CANCELLABLE
         )
         if outcome in (CancellationOutcome.REJECTED, CancellationOutcome.UNAVAILABLE):
             return None
@@ -328,29 +282,29 @@ class SimulatedPac:
             if not settled:
                 self._pending(record)
             return None
-        if record['state'] == SatState.CANCELLED:
+        if record['state'] == _SatState.CANCELLED:
             return CancellationAnswer.ACCEPTED
-        if record['cancellation'] == CancellationStatus.PENDING:
+        if record['cancellation'] == _CancellationStatus.PENDING:
             return CancellationAnswer.PENDING
-        if record.get('cancellability') == Cancellability.NOT_CANCELLABLE:
+        if record.get('cancellability') == _Cancellability.NOT_CANCELLABLE:
             return CancellationAnswer.NOT_CANCELLABLE
         if outcome == CancellationOutcome.NOT_CANCELLABLE:
-            record['cancellability'] = Cancellability.NOT_CANCELLABLE.value
+            record['cancellability'] = _Cancellability.NOT_CANCELLABLE.value
             return CancellationAnswer.NOT_CANCELLABLE
         accept = outcome == CancellationOutcome.ACCEPTED or (
-            outcome is None and self._cancellability(record) == Cancellability.WITHOUT_ACCEPTANCE
+            outcome is None and self._cancellability(record) == _Cancellability.WITHOUT_ACCEPTANCE
         )
         if accept:
-            record['state'] = SatState.CANCELLED.value
-            record['cancellation'] = CancellationStatus.ACCEPTED.value
+            record['state'] = _SatState.CANCELLED.value
+            record['cancellation'] = _CancellationStatus.ACCEPTED.value
             return CancellationAnswer.ACCEPTED
         self._pending(record)
         return CancellationAnswer.PENDING
 
     @staticmethod
     def _pending(record: dict[str, Any]) -> None:
-        record['cancellation'] = CancellationStatus.PENDING.value
-        record['cancellability'] = Cancellability.WITH_ACCEPTANCE.value
+        record['cancellation'] = _CancellationStatus.PENDING.value
+        record['cancellability'] = _Cancellability.WITH_ACCEPTANCE.value
 
     @_locked
     async def configure_cancellation(
@@ -374,21 +328,21 @@ class SimulatedPac:
         """Act as the recipient: accept, reject or let expire the pending cancellation."""
         key = 'uuid:' + uuid.upper()
         record = await self._get(key)
-        if record.get('cancellation') != CancellationStatus.PENDING:
-            _reject('SIM01', 'no cancellation is pending for this UUID')
+        if record.get('cancellation') != _CancellationStatus.PENDING:
+            reject('SIM01', 'no cancellation is pending for this UUID')
         answer = ReceiverAnswer(answer)
         if answer == ReceiverAnswer.REJECT:
-            record['cancellation'] = CancellationStatus.REJECTED.value
+            record['cancellation'] = _CancellationStatus.REJECTED.value
         else:
-            record['state'] = SatState.CANCELLED.value
+            record['state'] = _SatState.CANCELLED.value
             record['cancellation'] = (
-                CancellationStatus.ACCEPTED
+                _CancellationStatus.ACCEPTED
                 if answer == ReceiverAnswer.ACCEPT
-                else CancellationStatus.EXPIRED
+                else _CancellationStatus.EXPIRED
             ).value
         await self._set(key, record)
 
-    def _stamped_xml(self, sealed: _Sealed) -> bytes:
+    def _stamped_xml(self, sealed: Sealed) -> bytes:
         tfd = tfd11.TimbreFiscalDigital(
             UUID=str(uuid.uuid4()).upper(),
             FechaTimbrado=self._clock().replace(microsecond=0),

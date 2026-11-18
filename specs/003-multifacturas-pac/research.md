@@ -120,7 +120,7 @@ Sources:
 - **Alternatives considered**: using `codigo_mf_numero` (`2`, `10`) as the code. It is too coarse
   for a caller to act on.
 
-## R6. Cancellation: `cancelarCfdi` of `cancelacion2022`, the SAT's answer decides
+## R6. Cancellation: `cancelarCfdi` of `cancelacion2022`, the SAT's code decides
 
 - **Decision**:
   - **Request**: call `cancelarCfdi` with the struct `datos`, containing:
@@ -134,13 +134,8 @@ Sources:
   - **PAC refusal**: a `codigo_mf_numero` other than `0` is a `PacRejected` (R5).
   - **On `0`**: the SAT's code (`codigo_respuesta_sat`, the same as the receipt's `EstatusUUID`)
     decides:
-    - **`201`**, request received: `query_status` with the request's RFCs and total then decides:
-      - `Cancelado` → accepted;
-      - cancellation `En proceso` → pending;
-      - `No cancelable` → not cancellable;
-      - anything else, including a status query that fails → pending.
-    - **`202`**, cancellation previously requested: query the status the same way. Accepted if
-      cancelled, otherwise pending.
+    - **`201`**, request received → pending.
+    - **`202`**, cancellation previously requested (the document is cancelled) → accepted.
     - **Any other SAT code**: a `PacRejected` with the SAT code and `codigo_respuesta_sat_texto`
       (for example `205 No Existe`).
 - **Rationale**:
@@ -150,37 +145,26 @@ Sources:
     (Base64 `.cer` and `.key` plus the password), so `generar_pem` isn't needed.
   - **Observed in test mode**: the request reached the SAT, which answered `205 No Existe`, because
     test stamps never reach the SAT. A wrong key gave `10 / CACFDI33`.
-  - **Why `201` needs a status query**: `201` does not say whether the cancellation was immediate
-    or waits for the recipient. The SAT's status, the source of truth, does.
+  - **Why `201` is pending**: `201` does not say whether the cancellation was immediate or waits
+    for the recipient; pending is the answer that never overstates it. The SAT's status, which
+    does not depend on the PAC, tells the caller the outcome (amended 2026-11-18: the status query
+    first decided this inside the client; it moved to mictlanix/cfdi#6).
 - **Alternatives considered**: `consultarCancelarCfdi` of the PAC for the status. It answered
   `1100` with `json_uuids: null` in test mode and is less direct than the SAT. Sending PEM through
   `generar_pem` was rejected because it isn't needed.
 
-## R7. query_status from the SAT's public consultation service
+## R7. query_status: removed (2026-11-18)
 
-- **Decision**:
-  - **Request**: POST the SOAP `Consulta` to
-    `https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc` with the expression
-    `?re=…&rr=…&tt=…&id=…`. `tt` is formatted with spec 001's `_qr_total`, and `fe` is omitted.
-  - **`Estado`**: `Vigente` → valid, `Cancelado` → cancelled, `No Encontrado` (or a `CodigoEstatus`
-    starting `N`) → not found / not cancellable / none.
-  - **`EsCancelable`**: `Cancelable sin aceptación` → without acceptance, `Cancelable con
-    aceptación` → with acceptance, `No cancelable` → not cancellable.
-  - **`EstatusCancelacion`**:
-    - empty → none;
-    - `En proceso` → pending;
-    - `Plazo vencido` → expired;
-    - `Cancelado con aceptación` and `Cancelado sin aceptación` → accepted;
-    - `Solicitud rechazada` → rejected.
-  - **Unknown text**: a value outside these is a `PacRejected('SAT-ANSWER', …)`.
-  - **Failures**: transport failures map as in R2.
-- **Rationale**:
-  - **Source of truth**: the SAT is authoritative (constitution I) and needs no credentials.
-  - **Verified on 2026-11-18**: the query answers the same with and without `fe` (`S -
-    Comprobante obtenido satisfactoriamente`, `Vigente`, `Cancelable sin aceptación`), so the
-    interface's arguments are enough. Spec 001 verified `tt` with any number of trailing zeros.
-  - **Reusable**: it is a private module, so the next PAC client can use it.
-- **Alternatives considered**: the PAC's `consultarCancelarCfdi` (R6).
+- **Decision**: the client has no status query, and `query_status` with its values left spec
+  002's `PacClient` (user's decision, 2026-11-18).
+- **Rationale**: the SAT's public consultation service needs no credentials and answers the same
+  whichever PAC stamped the document, so it does not belong to a PAC client. The endpoint, the
+  request (`?re=…&rr=…&tt=…&id=…`, no `fe`, verified 2026-11-18) and the mapping of its answers,
+  first built here as a private module, are recorded in mictlanix/cfdi#6, which tracks a
+  PAC-independent client.
+- **Alternatives considered**: keeping `query_status` and delegating to a shared module, or
+  raising an "unsupported" rejection until #6; both keep a PAC-independent operation on every
+  PAC client.
 
 ## R8. Balance: `saldo`
 

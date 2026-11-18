@@ -26,7 +26,7 @@ class PacUnavailable(PacError):
 
 
 class PacTimeout(PacError):
-    """The outcome is unknown; resolve it with ``find_stamp`` or ``query_status``."""
+    """The outcome is unknown; look a stamp up with ``find_stamp``, ask a cancellation again."""
 
     def __init__(self) -> None:
         super().__init__('the PAC did not answer in time; the outcome is unknown')

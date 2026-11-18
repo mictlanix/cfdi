@@ -6,6 +6,12 @@
 
 **Status**: Draft
 
+> **Amended by feature 003 (mictlanix/cfdi#3), 2026-11-18:** `query_status` and its values
+> (`SatStatus`, `SatState`, `Cancellability`, `CancellationStatus`) were removed from `PacClient`
+> and `SimulatedPac`. The SAT's status service does not depend on the PAC; a PAC-independent
+> client for it is tracked in mictlanix/cfdi#6. The requirements below that concern the SAT
+> status are superseded; the simulator still keeps that state to decide its answers.
+
 **Input**: User description: "Generic PAC client interface and a simulated PAC (mictlanix/cfdi#2). Callers stamp and cancel CFDI 4.0 documents through one interface, whatever the PAC. This spec defines that interface and a simulated PAC that implements it. The first real PAC (Facturación México / Multifacturas) comes next in #3 on the same interface."
 
 ## User Scenarios & Testing *(mandatory)*

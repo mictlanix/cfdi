@@ -11,14 +11,10 @@ import pytest
 
 from mictlanix.cfdi import tfd11
 from mictlanix.cfdi.pac import (
-    Cancellability,
     CancellationAnswer,
     CancellationRequest,
-    CancellationStatus,
     CsdCredentials,
     PacClient,
-    SatState,
-    SatStatus,
     Stamp,
 )
 from tests.conftest import CsdFiles
@@ -53,11 +49,6 @@ def _values(credentials: CsdCredentials) -> list[Any]:
         Stamp(xml=b'<x/>', timbre=_timbre()),
         credentials,
         _request(credentials),
-        SatStatus(
-            state=SatState.VALID,
-            cancellability=Cancellability.WITH_ACCEPTANCE,
-            cancellation=CancellationStatus.NONE,
-        ),
     ]
 
 
@@ -73,8 +64,6 @@ def test_values_are_keyword_only(credentials: CsdCredentials) -> None:
         Stamp(b'<x/>', _timbre())  # type: ignore[misc]
     with pytest.raises(TypeError):
         CsdCredentials(b'c', b'k', 'p')  # type: ignore[misc]
-    with pytest.raises(TypeError):
-        SatStatus(SatState.VALID, Cancellability.WITH_ACCEPTANCE, CancellationStatus.NONE)  # type: ignore[misc]
 
 
 def test_credentials_repr_hides_the_key_and_password(csd_files: CsdFiles) -> None:
@@ -117,26 +106,6 @@ def test_stamp_repr_never_shows_the_xml() -> None:
             CancellationAnswer,
             {'ACCEPTED': 'accepted', 'PENDING': 'pending', 'NOT_CANCELLABLE': 'not_cancellable'},
         ),
-        (SatState, {'VALID': 'valid', 'CANCELLED': 'cancelled', 'NOT_FOUND': 'not_found'}),
-        (
-            Cancellability,
-            {
-                'WITHOUT_ACCEPTANCE': 'without_acceptance',
-                'WITH_ACCEPTANCE': 'with_acceptance',
-                'NOT_CANCELLABLE': 'not_cancellable',
-            },
-        ),
-        (
-            CancellationStatus,
-            {
-                'NONE': 'none',
-                'REQUESTED': 'requested',
-                'PENDING': 'pending',
-                'ACCEPTED': 'accepted',
-                'REJECTED': 'rejected',
-                'EXPIRED': 'expired',
-            },
-        ),
     ],
 )
 def test_enums_have_exactly_their_values(enum: Any, members: dict[str, str]) -> None:
@@ -146,5 +115,5 @@ def test_enums_have_exactly_their_values(enum: Any, members: dict[str, str]) -> 
 
 
 def test_every_interface_method_is_a_coroutine_function() -> None:
-    for name in ('stamp', 'find_stamp', 'request_cancellation', 'query_status'):
+    for name in ('stamp', 'find_stamp', 'request_cancellation'):
         assert inspect.iscoroutinefunction(getattr(PacClient, name)), name

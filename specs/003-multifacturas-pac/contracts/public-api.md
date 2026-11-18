@@ -1,7 +1,10 @@
 # Contract: the Multifacturas client in `mictlanix.cfdi.pac`
 
-This feature adds two exports to `mictlanix.cfdi.pac` and changes nothing else. Spec 002's
-contract still lists everything else (`specs/002-pac-interface-simulator/contracts/public-api.md`).
+This feature adds two exports to `mictlanix.cfdi.pac`, and removes `query_status` with its
+values (`SatStatus`, `SatState`, `Cancellability`, `CancellationStatus`) from the interface: the
+SAT's status service does not depend on the PAC, and a PAC-independent client for it is tracked
+in mictlanix/cfdi#6. Spec 002's contract, amended to match, lists everything else
+(`specs/002-pac-interface-simulator/contracts/public-api.md`).
 The exports test of `mictlanix.cfdi.pac` reads both contracts.
 
 ## Exports
@@ -19,13 +22,12 @@ class MultifacturasSettings:
     password: str
     production: bool
     base_url: str = 'https://ws.multifacturas.com'
-    sat_url: str = 'https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc'
     connect_timeout: float = 10.0
     read_timeout: float = 60.0
 ```
 
-- Construction raises `ValueError` naming the field for a URL that is not `https://` or a timeout
-  ≤ 0.
+- Construction raises `ValueError` naming the field for a `base_url` that is not `https://` or a
+  timeout ≤ 0.
 - `repr` shows `password=<hidden>`.
 - Nothing is read from the environment.
 
@@ -37,9 +39,6 @@ class MultifacturasPac:  # implements PacClient
     async def stamp(self, sealed_xml: bytes) -> Stamp
     async def find_stamp(self, sealed_xml: bytes) -> Stamp | None
     async def request_cancellation(self, request: CancellationRequest) -> CancellationAnswer
-    async def query_status(
-        self, issuer_rfc: str, recipient_rfc: str, uuid: str, total: Decimal
-    ) -> SatStatus
     async def balance(self) -> int
 ```
 
@@ -51,9 +50,10 @@ class MultifacturasPac:  # implements PacClient
 - **`find_stamp`**: checks the input like `stamp` and returns `None` without calling the PAC. The
   PAC has no lookup by sealed document.
 - **`request_cancellation`**: sends the PAC the CSD's certificate, encrypted key and password, the
-  issuer RFC, the UUID, the reason and the substitute UUID. Data-model §5 explains how the answer
-  is decided.
-- **`query_status`**: answers from the SAT's public consultation service.
+  issuer RFC, the UUID, the reason and the substitute UUID. The SAT's code decides the answer:
+  `201` (request received) is `PENDING`, `202` (already cancelled) is `ACCEPTED`, and any other
+  code is `PacRejected` with it (data-model §5). The client never answers `NOT_CANCELLABLE`; that
+  is learned from the SAT's status.
 - **`balance`**: the PAC account's remaining stamps. It belongs to this client only.
 - **Errors**: every operation returns its result or raises a `PacError` subclass, `from None`:
   - `PacUnavailable` when the connection could not be made;

@@ -3,7 +3,8 @@
 Python library for Mexican CFDI 4.0 electronic invoices. It builds documents of every type with
 their complements, derives their totals, validates them against the SAT's schemas and Anexo 20
 rules, seals them with the issuer's CSD, and reads stamped documents. Stamping and cancelling go
-through one PAC interface; this release ships a simulated PAC, and real PAC clients come next.
+through one PAC interface, implemented by a simulated PAC and by Facturación México
+(Multifacturas).
 
 Everything runs offline: the SAT's XSDs, stylesheets and the catalog data the rules use ship
 inside the package.
@@ -91,8 +92,8 @@ with `payment_comprobante`; a stamped document is read with `read`, and `timbre`
 ## Stamping and cancelling
 
 Every PAC client implements `mictlanix.cfdi.pac.PacClient`, so the code that stamps and cancels is
-written once. `SimulatedPac` implements it offline, for development and tests; the first real PAC
-(Facturación México / Multifacturas) comes next on the same interface.
+written once. `SimulatedPac` implements it offline, for development and tests, and
+`MultifacturasPac` implements it for Facturación México (Multifacturas).
 
 ```python
 from mictlanix.cfdi.pac import (
@@ -120,9 +121,6 @@ answer = await pac.request_cancellation(
         csd=CsdCredentials(certificate=cer_bytes, private_key=key_bytes, password=password),
     )
 )  # accepted, pending (the recipient must accept) or not_cancellable
-status = await pac.query_status(
-    'EKU9003173C9', 'URE180429TM6', stamp.timbre.UUID, Decimal('116.00')
-)
 ```
 
 Errors are `PacRejected` (with the PAC's `code` and `message`), `PacUnavailable` (nothing was
@@ -130,6 +128,25 @@ done) and `PacTimeout` (outcome unknown), all `PacError`. The simulated PAC's ou
 per document with `configure_stamp` and per UUID with `configure_cancellation`, and
 `answer_as_receiver` plays the recipient of a pending cancellation. Its state lives in a
 `SimulatorStore` (in memory by default), which several processes can share.
+
+### Multifacturas
+
+```python
+from mictlanix.cfdi.pac import MultifacturasPac, MultifacturasSettings
+
+pac = MultifacturasPac(
+    MultifacturasSettings(user=pac_user, password=pac_password, production=False)
+)
+stamps_left = await pac.balance()
+```
+
+`production=False` uses the PAC's test mode; credentials, endpoints and timeouts all come from
+the caller, and every call uses HTTPS with certificate verification. A cancellation is pending
+when the SAT received it and accepted when the SAT had already cancelled the document; the SAT's
+status service, which does not depend on the PAC, tells the final outcome. `find_stamp` always
+returns `None`: the PAC cannot look a stamp
+up by sealed document, and it answers a resubmission of the same sealed document with the
+existing stamp, so after a `PacTimeout` you stamp the same document again and get the same UUID.
 
 ## Supported complements
 
