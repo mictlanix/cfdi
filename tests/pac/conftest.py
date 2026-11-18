@@ -73,7 +73,7 @@ class Replay:
 
 @pytest.fixture
 def replay(monkeypatch: pytest.MonkeyPatch) -> Replay:
-    from mictlanix.cfdi.pac import _soap
+    from mictlanix.cfdi import _soap
 
     fake = Replay()
     monkeypatch.setattr(_soap, '_post', fake.post)

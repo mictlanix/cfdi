@@ -21,6 +21,7 @@ from mictlanix.cfdi._xml import CFDI40, XSI, serialize
 from mictlanix.cfdi.pac._errors import PacRejected, PacTimeout, PacUnavailable
 from mictlanix.cfdi.pac._input import Sealed, check, reject
 from mictlanix.cfdi.pac._interface import (
+    _UUID,
     CancellationAnswer,
     CancellationRequest,
     PacClient,
@@ -245,6 +246,27 @@ class SimulatedPac:
             record['issuer_rfc'] == issuer
             and record['recipient_rfc'] == recipient
             and Decimal(record['total']) == total
+        )
+
+    @_locked
+    async def _sat_status(
+        self, issuer_rfc: str, recipient_rfc: str, uuid: str, total: Decimal
+    ) -> tuple[str, str, str]:
+        """The simulated SAT's state, cancellability and cancellation status of a UUID.
+
+        Read by ``mictlanix.cfdi.sat.SimulatedSatStatusClient`` (spec 004 data model §5); a UUID
+        that is not well formed, or RFCs or a total that do not match the stamp, are not found.
+        """
+        not_found = ('not_found', _Cancellability.NOT_CANCELLABLE.value, 'none')
+        if not _UUID.fullmatch(uuid):
+            return not_found
+        record = await self._get('uuid:' + uuid.upper())
+        if not self._matches(record, issuer_rfc, recipient_rfc, total):
+            return not_found
+        return (
+            record.get('state', _SatState.VALID.value),
+            self._cancellability(record).value,
+            record.get('cancellation', _CancellationStatus.NONE.value),
         )
 
     @_locked
