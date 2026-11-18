@@ -235,7 +235,10 @@ built ──compute──▶ computed ──validate──▶ valid ──seal(C
 
 ## 5. Vendored SAT data
 
+Since mictlanix/cfdi#10 the files live in `src/mictlanix/cfdi/_sat_files/`, a private data folder;
+`src/mictlanix/cfdi/sat/` is the `mictlanix.cfdi.sat` package (feature 004).
+
 | Item | Location | Recorded with |
 |------|----------|---------------|
-| XSDs and XSLTs, unmodified | `src/mictlanix/cfdi/sat/`, mirroring the SAT URL path | URL, SHA-256, SAT publication date, retrieval date in `manifest.json` |
-| Catalog columns used by rules (for example decimals per currency) | `src/mictlanix/cfdi/sat/catalogs/` | Source spreadsheet, its publication date |
+| XSDs and XSLTs, unmodified | `src/mictlanix/cfdi/_sat_files/`, mirroring the SAT URL path | URL, SHA-256, SAT publication date, retrieval date in `manifest.json` |
+| Catalog columns used by rules (for example decimals per currency) | `src/mictlanix/cfdi/_sat_files/catalogs/` | Source spreadsheet, its publication date |

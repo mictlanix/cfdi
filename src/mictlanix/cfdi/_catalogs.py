@@ -9,7 +9,11 @@ from typing import Any
 
 @cache
 def load(name: str) -> Any:
-    text = files('mictlanix.cfdi').joinpath('sat', 'catalogs', f'{name}.json').read_text('utf-8')
+    text = (
+        files('mictlanix.cfdi')
+        .joinpath('_sat_files', 'catalogs', f'{name}.json')
+        .read_text('utf-8')
+    )
     return json.loads(text)
 
 

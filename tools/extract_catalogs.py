@@ -2,7 +2,7 @@
 
 Dev-only; never shipped. The SAT publishes the CFDI 4.0 catalogs as one spreadsheet, linked as
 ``documentos/catCFDI_V_4_<date>.xls`` on the Anexo 20 page. Only the columns a rule or a
-derivation uses are extracted, each into ``src/mictlanix/cfdi/sat/catalogs/<name>.json``,
+derivation uses are extracted, each into ``src/mictlanix/cfdi/_sat_files/catalogs/<name>.json``,
 recorded in the manifest with the spreadsheet's URL and publication date.
 
 Usage: uv run python tools/extract_catalogs.py [--file local-copy.xls --published YYYY-MM-DD]

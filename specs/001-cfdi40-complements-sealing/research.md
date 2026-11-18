@@ -20,8 +20,9 @@ Python 3.12. Everything else is a design decision or is marked as not verified.
 
 ## R2. SAT artifacts are vendored unmodified and resolved offline
 
-- **Decision**: ship the SAT's XSDs and XSLTs byte-identical under `src/mictlanix/cfdi/sat/`, in a tree
-  that mirrors their SAT URL path. A custom lxml resolver maps every
+- **Decision**: ship the SAT's XSDs and XSLTs byte-identical under `src/mictlanix/cfdi/_sat_files/`,
+  in a tree that mirrors their SAT URL path. (Moved there from `src/mictlanix/cfdi/sat/` by
+  mictlanix/cfdi#10, unchanged, when that folder became the `mictlanix.cfdi.sat` package.) A custom lxml resolver maps every
   `http://www.sat.gob.mx/sitio_internet/...` URL to the packaged file, and parsers are created
   with `no_network=True`. A `manifest.json` records, per file: SAT URL, SHA-256, the SAT's
   publication date and the retrieval date.

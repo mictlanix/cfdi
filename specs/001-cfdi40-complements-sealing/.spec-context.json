@@ -798,7 +798,7 @@
   ],
   "telemetryInstanceId": "0d541629-7d34-402b-81c3-841de0e92a71",
   "currentTask": null,
-  "convergeStartedAt": "2026-11-18T08:26:21.602Z",
+  "convergeStartedAt": "2026-11-18T23:26:27.673Z",
   "convergePasses": [
     {
       "startedAt": "2026-11-18T07:03:09.062Z",
@@ -822,6 +822,18 @@
       "finishedAt": "2026-11-18T08:26:32.612Z",
       "added": [],
       "completed": true
+    },
+    {
+      "startedAt": "2026-11-18T23:18:00.249Z",
+      "by": "extension",
+      "finishedAt": "2026-11-18T23:19:21.303Z",
+      "added": []
+    },
+    {
+      "startedAt": "2026-11-18T23:26:28.730Z",
+      "by": "extension",
+      "finishedAt": "2026-11-18T23:26:44.237Z",
+      "added": []
     }
   ],
   "concerns": [

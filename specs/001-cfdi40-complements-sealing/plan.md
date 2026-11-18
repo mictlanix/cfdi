@@ -139,7 +139,7 @@ src/mictlanix/cfdi/
 ├── _read.py                 # read(), timbre(), tfd_original_string(), qr_data()
 ├── _errors.py               # CfdiError and its subclasses, Violation
 ├── (pac/)                   # reserved for mictlanix/cfdi#2 and #3; NOT created by this feature
-└── sat/                     # vendored SAT artifacts (package data)
+└── _sat_files/              # vendored SAT artifacts (package data; was sat/, moved by #10)
     ├── manifest.json        # url, sha256, SAT publication date, retrieval date per file
     ├── sitio_internet/cfd/  # XSDs and XSLTs, mirroring the SAT URL path, byte-identical
     └── catalogs/            # catalog columns the rules need, with their source and date
@@ -147,7 +147,7 @@ src/mictlanix/cfdi/
 tools/                       # dev-only, not shipped in the wheel
 ├── fetch_sat.py             # download SAT files and write manifest.json
 ├── generate_models.py       # XSD -> model modules
-└── extract_catalogs.py      # SAT catalog spreadsheet -> sat/catalogs/
+└── extract_catalogs.py      # SAT catalog spreadsheet -> _sat_files/catalogs/
 
 tests/
 ├── conftest.py              # blocks outbound connections for the whole suite

@@ -45,7 +45,7 @@ def test_no_module_for_a_retired_version(name: str) -> None:
 
 def test_no_schema_for_a_retired_version_is_vendored() -> None:
     manifest = json.loads(
-        files('mictlanix.cfdi').joinpath('sat', 'manifest.json').read_text('utf-8')
+        files('mictlanix.cfdi').joinpath('_sat_files', 'manifest.json').read_text('utf-8')
     )
     vendored = {path.rsplit('/', 1)[-1] for path in manifest}
     assert vendored.isdisjoint(RETIRED_SCHEMAS)

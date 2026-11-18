@@ -324,3 +324,11 @@ Each step leaves all four gates green and the library releasable.
 ## Phase 8: Convergence
 
 - [X] T090 Make the CSD validity naive Mexico City time (fixed UTC-6), superseding the "naive UTC" wording of T035 and T038: in `tests/test_csd.py` assert the test CSD's `valid_from == datetime(2023, 5, 18, 5, 43, 51)` and `valid_to == datetime(2027, 5, 18, 5, 43, 51)` and the same values in its `repr`; in `tests/test_seal.py` assert that a `Fecha` one second past `valid_to` in Mexico City time raises `CertificateValidityError` and that a `Fecha` exactly at either end seals; convert in `src/mictlanix/cfdi/_csd.py`; keep `contracts/public-api.md`, `research.md` and `data-model.md` saying the same, per FR-014 and mictlanix/mbe-api#106 (contradicts)
+
+## Phase 9: The vendored SAT files move to their own folder (mictlanix/cfdi#10, 2026-11-18)
+
+Feature 004 made `src/mictlanix/cfdi/sat/` the `mictlanix.cfdi.sat` package, so the vendored files
+move out of it. The paths `src/mictlanix/cfdi/sat/…` in T006–T008, T023, T027 and T087 now read
+`src/mictlanix/cfdi/_sat_files/…`; nothing else about those tasks changes.
+
+- [X] T091 Move `sitio_internet/`, `catalogs/` and `manifest.json` from `src/mictlanix/cfdi/sat/` to `src/mictlanix/cfdi/_sat_files/` with `git mv` (byte-identical, constitution I), and point `src/mictlanix/cfdi/_sat.py`, `src/mictlanix/cfdi/_catalogs.py`, `tools/fetch_sat.py`, `tools/extract_catalogs.py`, `tests/test_sat_artifacts.py`, `tests/test_retired.py`, `README.md`, `research.md` R2 and `data-model.md` §5 at the new path; the full suite, ruff, mypy and `uv build` pass and the wheel ships the files under `mictlanix/cfdi/_sat_files/`
