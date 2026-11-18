@@ -34,8 +34,9 @@ are in [research.md](research.md).
 **Primary Dependencies**: none new.
 - **Standard library**: `http.client`, `ssl`, `asyncio`, `base64`, `json`.
 - **lxml**: already a dependency, used to parse answers.
-- **The library's own code**: the reader, `stamp_of`, `_qr_total`, and the input checks of spec
-  002 (moved to a shared private module).
+- **The library's own code**: the reader, `stamp_of`, and the input checks of spec 002 (moved to
+  a shared private module). (`_qr_total` was used only by the SAT status query, which moved to
+  mictlanix/cfdi#6.)
 
 **Storage**: N/A
 
