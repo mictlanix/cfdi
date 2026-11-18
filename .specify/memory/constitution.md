@@ -59,9 +59,9 @@ let callers react correctly without guessing from messages.
   from its own namespace and only from there:
   - the PAC surface: the generic PAC interface (its protocol, values, enums and errors) and every
     PAC client, from `mictlanix.cfdi.pac`;
-  - the SAT status surface: the `SatStatusClient` protocol, its values and enums, and every SAT
-    status client, from `mictlanix.cfdi.sat`. The SAT's status service does not depend on the PAC,
-    so it is not PAC surface.
+  - the SAT status surface: the `SatStatusClient` protocol, its values, enums and errors, and every
+    SAT status client, from `mictlanix.cfdi.sat`. The SAT's status service does not depend on the
+    PAC, so it is not PAC surface.
 - The public API MUST be fully typed and checked by mypy in strict mode.
 - The library follows semantic versioning: breaking changes MUST happen only in a major release
   and MUST be listed in the changelog.
@@ -99,4 +99,4 @@ that other systems embed.
   PATCH for clarifications and wording.
 - PRs and reviews MUST verify compliance with this constitution.
 
-**Version**: 1.1.1 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-18
+**Version**: 1.1.2 | **Ratified**: 2026-11-17 | **Last Amended**: 2026-11-18
