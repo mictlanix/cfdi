@@ -25,7 +25,7 @@ which is also the order the mapper writes.
 | `fixed` attribute | Class constant, not a constructor argument |
 | `xs:decimal` and derived types | `Decimal` |
 | `xs:dateTime`, `xs:date`, `xs:time` | `datetime`, `date`, `time`, all naive (no time zone), written in the SAT's format without an offset |
-| Integer types | `int` |
+| Integer types | `int`; but `str` when the type's pattern accepts leading zeros (such as `t_CuentaBancaria`), so the exact digits are kept |
 | `xs:boolean` | `bool` |
 | Every other simple type, including every catalog type | `str` |
 | Strict `xs:any` (`Complemento`, `ComplementoConcepto`, `Addenda`) | See 1.4 |
@@ -136,7 +136,7 @@ through a registry keyed by namespace and root element, filled from the generate
 | Type | Fields | Notes |
 |------|--------|-------|
 | `RawXml` | `xml: bytes` | One XML element kept as bytes. Allowed in `Addenda` when emitting. Under `Complemento` or `ComplementoConcepto` it appears only when reading an element the library does not model, and such a document cannot be serialized. |
-| `CSD` | `NoCertificado: str`, `valid_from: datetime`, `valid_to: datetime` | Created by `CSD.load(certificate, private_key, password)`. Holds the certificate and the private key privately. `repr` shows only the three public fields. Not a dataclass. `valid_from` and `valid_to` are naive UTC. |
+| `CSD` | `NoCertificado: str`, `valid_from: datetime`, `valid_to: datetime` | Created by `CSD.load(certificate, private_key, password)`. Holds the certificate and the private key privately. `repr` shows only the three public fields. Not a dataclass. `valid_from` and `valid_to` are naive Mexico City time (UTC-6). |
 | `Violation` | `node: str`, `attribute: str \| None`, `rule: str`, `message: str` | One broken rule. `node` is an XPath with the SAT's prefixes. `rule` is an XSD constraint name, a SAT validation code, or one of the library rules `complement-document-type`, `complement-level`, `complement-not-modelled`, `xml-invalid-character` and `datetime-not-naive`. `message` is for people; callers branch on `rule`. |
 | `QrData` | `url: str`, `UUID: str`, `RfcEmisor: str`, `RfcReceptor: str`, `Total: Decimal`, `SelloUltimos8: str` | The data of the SAT verification QR; `url` is the full verification address. |
 
@@ -179,18 +179,49 @@ there is no `Impuestos` node.
 
 ### 3.2 Pagos 2.0 (FR-025)
 
+Source: `Pagos20.xsd` and the SAT's Pagos 2.0 error matrix,
+`http://omawww.sat.gob.mx/tramitesyservicios/Paginas/documentos/MatrizDeErrores_CRP_V20_RevB.xls`
+(linked on `recepcion_de_pagos.htm`, published 2024-12-14), rules CRP20201 to CRP20211 for
+`Totales` and CRP20265, CRP20268 and CRP20274 for `ImpuestosP`.
+
+**`Pago.ImpuestosP`**, per payment, from the `ImpuestosDR` of its related documents. Each related
+amount is converted to the payment currency by dividing it by that document's `EquivalenciaDR`
+(1 when the currencies are the same). Sums are exact; a sum is rounded half up to 6 decimals, the
+schema's limit, only when a conversion gives it more.
+
 | Field | Value |
 |-------|-------|
-| `Pago.ImpuestosP` | The `ImpuestosDR` of the payment's related documents, each amount divided by its `EquivalenciaDR`, grouped by (`ImpuestoP`, `TipoFactorP`, `TasaOCuotaP`) for transferred taxes and by `ImpuestoP` for withheld taxes, rounded to the decimals of `MonedaP` |
-| `Totales.MontoTotalPagos` | `r(Σ Pago.Monto × Pago.TipoCambioP, 2)` |
-| `Totales.TotalTraslados…` and `Totales.TotalRetenciones…` | Each payment's `ImpuestosP` amounts times `TipoCambioP`, summed per tax and rate into the matching `Totales` attribute, rounded to 2 decimals; an attribute is absent when no payment contributes to it |
+| `TrasladoP` | One per (`ImpuestoDR`, `TipoFactorDR`, `TasaOCuotaDR`): `BaseP = Σ BaseDR / EquivalenciaDR`; `ImporteP = Σ ImporteDR / EquivalenciaDR`, absent for `Exento`; `TasaOCuotaP` absent for `Exento` |
+| `RetencionP` | One per `ImpuestoDR`: `ImporteP = Σ ImporteDR / EquivalenciaDR` |
+| `ImpuestosP` | Absent when no related document carries taxes |
 
-If a related document's `EquivalenciaDR` is zero or absent, a payment's `TipoCambioP` is absent,
-or a payment's `MonedaP` is not in the `c_Moneda` catalog, nothing is derived for the complement: `ImpuestosP` and `Totales` stay unset
-and validation reports the missing `Totales`.
+**`Pagos.Totales`**, in MXN with 2 decimals. Each value is `r(Σ x × TipoCambioP, 2)` over every
+payment, where `x` is the `ImpuestosP` value named below; an attribute is absent when no payment
+contributes to it.
 
-The exact attribute-by-attribute table for `Totales` is written from `Pagos20.xsd` and the Pagos
-2.0 validation matrix when that task is implemented; the tests for it come first.
+| Attribute | `x` |
+|-----------|-----|
+| `TotalRetencionesIVA` | `ImporteP` of `RetencionP` with `ImpuestoP` 002 |
+| `TotalRetencionesISR` | `ImporteP` of `RetencionP` with `ImpuestoP` 001 |
+| `TotalRetencionesIEPS` | `ImporteP` of `RetencionP` with `ImpuestoP` 003 |
+| `TotalTrasladosBaseIVA16` | `BaseP` of `TrasladoP` 002, `Tasa`, 0.160000 |
+| `TotalTrasladosImpuestoIVA16` | `ImporteP` of `TrasladoP` 002, `Tasa`, 0.160000 |
+| `TotalTrasladosBaseIVA8` | `BaseP` of `TrasladoP` 002, `Tasa`, 0.080000 |
+| `TotalTrasladosImpuestoIVA8` | `ImporteP` of `TrasladoP` 002, `Tasa`, 0.080000 |
+| `TotalTrasladosBaseIVA0` | `BaseP` of `TrasladoP` 002, `Tasa`, 0.000000 |
+| `TotalTrasladosImpuestoIVA0` | `ImporteP` of `TrasladoP` 002, `Tasa`, 0.000000 |
+| `TotalTrasladosBaseIVAExento` | `BaseP` of `TrasladoP` 002, `Exento` |
+| `MontoTotalPagos` | `Monto` of each `Pago` |
+
+A value the caller set (a `Totales` node, or a payment's `ImpuestosP`) is kept. If a related
+document's `EquivalenciaDR` is zero or absent, a payment's `TipoCambioP` is absent, or a payment's
+`MonedaP` is not in the `c_Moneda` catalog, nothing is derived for the complement: `ImpuestosP`
+and `Totales` stay unset and validation reports the missing `Totales`.
+
+**Note on the conversion**: the matrix's rule text for `ImpuestosP` says "the sum of the related
+documents' amounts", while the standard says the node is "expressed in the payment currency". The
+two agree whenever the payment and the related document share a currency. For a payment in another
+currency this library converts, as the standard's description requires.
 
 ## 4. Document life cycle
 

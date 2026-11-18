@@ -137,10 +137,13 @@ Python 3.12. Everything else is a design decision or is marked as not verified.
     the UTF-8 original string.
   - Key and certificate match when their public numbers are equal.
   - The issue date (`Fecha`) must lie within the certificate's validity period. `Fecha` is naive
-    local time and the certificate's validity is UTC; they are compared as they are, with no
-    time-zone conversion, because converting needs the time zone of `LugarExpedicion`, which
-    this feature does not model. The check can therefore differ from the PAC's within the
-    offset hours at either end of the period.
+    local time and the certificate's validity is UTC, so the validity is converted to Mexico
+    City time (fixed UTC-6 since Mexico abolished daylight saving time in October 2022, so
+    exact for every certificate still valid) and kept naive. This matches how mbe stores
+    certificate validity (checked against 17 real certificates, mictlanix/mbe-api#106).
+    Converting by the exact zone of `LugarExpedicion` would need the `c_CodigoPostal` catalog,
+    which this feature does not model, so for other zones the check can differ from the PAC's
+    by one or two hours at either end of the period.
 - **Rationale**: the de facto standard, audited, and the only dependency needed for X.509 plus
   encrypted PKCS#8.
 - **Secrets**: `CSD` keeps the key object private, defines `__repr__` to show only
@@ -149,9 +152,10 @@ Python 3.12. Everything else is a design decision or is marked as not verified.
 - **Known results**: RSA PKCS#1 v1.5 signatures are deterministic. The expected seal for each
   fixture is produced once, independently, with the OpenSSL command line and committed; tests
   compare against it and also verify the seal with the certificate's public key.
-- **Not verified here**: loading the SAT's public test CSD files themselves (they were not
-  downloaded during research). Their key encryption must be confirmed to load under the
-  OpenSSL 3 build that `cryptography` ships; this is the first sealing task.
+- **Verified (2026-11-18, tasks.md T034)**: the SAT's public test CSD for `EKU9003173C9` loads
+  with `cryptography` 50.0.2: the encrypted PKCS#8 key opens with the published password, it
+  matches the certificate, and the serial's bytes decode to `NoCertificado`
+  `30001000000500003416`.
 - **Alternatives considered**: `pyOpenSSL` (deprecated for this use); calling the `openssl`
   binary (a system dependency).
 
@@ -201,10 +205,18 @@ Python 3.12. Everything else is a design decision or is marked as not verified.
   `seal` raise `ValidationError`; `validate` returns that one violation), which is how the
   retired complements can be read but never emitted. `RawXml` under `Addenda` is written as is.
 - **QR data**: the verification address
-  `https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx` with `id` (UUID), `re`
-  (issuer RFC), `rr` (recipient RFC), `tt` (total) and `fe` (last eight characters of the
-  issuer's seal). **Not verified here**: the exact formatting of `tt` in Anexo 20 for CFDI 4.0;
-  to be confirmed against the Anexo 20 text when writing the test.
+  `https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx` followed, in this order, by
+  `?id=` (UUID), `&re=` (issuer RFC), `&rr=` (recipient RFC), `&tt=` (total) and `&fe=` (last
+  eight characters of the issuer's seal), values written as they are (the standard's example
+  does not escape `/`, `+` or `=` in `fe`).
+- **`tt` format (confirmed 2026-11-18, tasks.md T041)**: the Anexo 20 standard
+  (`documentos/Anexo20_2022.pdf`, section on the printed representation's QR code) says the total
+  takes at most 25 characters (18 integer digits, the point, 6 decimals) and that "non-significant
+  zeros must be omitted", and gives the `&tt=` segment a minimum of 7 characters, so the point and
+  one decimal always remain. Its example, `tt=0000014300.000000`, still shows the zero-padded
+  format of CFDI 3.3 and contradicts the text. The library follows the text: no leading zeros,
+  trailing decimal zeros removed down to one decimal. 116.00 gives `tt=116.0`, 116.50 gives
+  `tt=116.5`, 0 gives `tt=0.0`, 1234.123456 gives `tt=1234.123456`.
 
 ## R10. Dependencies and tooling
 
@@ -232,8 +244,8 @@ Python 3.12. Everything else is a design decision or is marked as not verified.
 - **Name availability**: not checked. Whether `mictlanix-cfdi` is free on PyPI must be confirmed
   before the first publish.
 - **Type checking**: mypy needs `mypy_path = "src"` and `explicit_package_bases = true` to map
-  files under a namespace package to their real module names. Not verified here; the rename task
-  confirms it by keeping `uv run mypy src` green.
+  files under a namespace package to their real module names. Verified by the rename task
+  (tasks.md T001): `uv run mypy src` is green with them.
 - **`py.typed`**: goes in `src/mictlanix/cfdi/`, the regular package, as PEP 561 requires for
   namespace packages.
 - **`pac`**: `mictlanix.cfdi.pac` is a future subpackage of this same distribution. Nothing is

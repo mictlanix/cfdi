@@ -140,7 +140,8 @@ class CSD:
 PKCS#8, DER). Raises `CsdError` with a `reason`, and nothing else: a key that is not encrypted
 is `invalid_key`, and a certificate whose serial number is not 20 ASCII digits is
 `invalid_certificate`. The password is not stored. `valid_from` and `valid_to` are naive
-datetimes in UTC, as the certificate records them.
+datetimes in Mexico City time (a fixed UTC-6 since October 2022), converted from the UTC the
+certificate records, the same convention mbe uses for stored certificates.
 
 ```python
 def seal(comprobante: Comprobante, csd: CSD) -> bytes
@@ -153,9 +154,9 @@ string, signs it with RSA-SHA256 and returns the sealed XML, ready for a PAC.
 - Raises `CertificateValidityError` if `Fecha` is outside the certificate's validity period.
 - Raises `ParseError` if a `RawXml` under `Addenda` is not one well-formed element.
 - `Fecha` is the naive local time of the place of issue, as Anexo 20 defines it, and is compared
-  with the certificate's UTC validity period without any time-zone conversion. Within the few
-  hours of offset at either end of that period the result can differ from the PAC's, which has
-  the final word.
+  with the certificate's validity period in Mexico City time. For a place of issue in another
+  time zone the result can differ from the PAC's by that zone's offset (one or two hours) at
+  either end of the period; the PAC has the final word.
 - Deterministic: the same document and CSD always give the same bytes.
 - A document that already carries a `TimbreFiscalDigital` gets no special treatment: sealing it
   again keeps the old stamp, which no longer matches the new seal. Do not seal a stamped document.

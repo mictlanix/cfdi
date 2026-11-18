@@ -1,0 +1,78 @@
+{
+ "601": {
+  "fisica": false,
+  "moral": true
+ },
+ "603": {
+  "fisica": false,
+  "moral": true
+ },
+ "605": {
+  "fisica": true,
+  "moral": false
+ },
+ "606": {
+  "fisica": true,
+  "moral": false
+ },
+ "607": {
+  "fisica": true,
+  "moral": false
+ },
+ "608": {
+  "fisica": true,
+  "moral": false
+ },
+ "610": {
+  "fisica": true,
+  "moral": true
+ },
+ "611": {
+  "fisica": true,
+  "moral": false
+ },
+ "612": {
+  "fisica": true,
+  "moral": false
+ },
+ "614": {
+  "fisica": true,
+  "moral": false
+ },
+ "615": {
+  "fisica": true,
+  "moral": false
+ },
+ "616": {
+  "fisica": true,
+  "moral": false
+ },
+ "620": {
+  "fisica": false,
+  "moral": true
+ },
+ "621": {
+  "fisica": true,
+  "moral": false
+ },
+ "622": {
+  "fisica": false,
+  "moral": true
+ },
+ "623": {
+  "fisica": false,
+  "moral": true
+ },
+ "624": {
+  "fisica": false,
+  "moral": true
+ },
+ "625": {
+  "fisica": true,
+  "moral": false
+ },
+ "626": {
+  "fisica": true,
+  "moral": true
+ }
+}

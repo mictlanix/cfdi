@@ -1,5 +1,5 @@
-import mtx_cfdi
+import mictlanix.cfdi
 
 
 def test_version() -> None:
-    assert mtx_cfdi.__version__ == '0.1.0'
+    assert mictlanix.cfdi.__version__ == '0.1.0'
