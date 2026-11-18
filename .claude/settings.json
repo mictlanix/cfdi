@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".venv/bin/python \"${CLAUDE_PROJECT_DIR}/.specify/events.py\" speckit.companion.on-prompt user_prompt_submit 10",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.venv/bin/python\" \"${CLAUDE_PROJECT_DIR}/.specify/events.py\" speckit.companion.on-prompt user_prompt_submit 10",
             "timeout": 15,
             "__speckit_event__": true
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".venv/bin/python \"${CLAUDE_PROJECT_DIR}/.specify/events.py\" speckit.companion.on-stop stop 10",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.venv/bin/python\" \"${CLAUDE_PROJECT_DIR}/.specify/events.py\" speckit.companion.on-stop stop 10",
             "timeout": 15,
             "__speckit_event__": true
           }
